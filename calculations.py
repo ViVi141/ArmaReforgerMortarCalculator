@@ -88,31 +88,31 @@ def find_valid_solutions(ammo, distance, elev_diff):
                 break
     return valid_solutions
 
-def check_mortar_fo_axis(mortar_coords, fo_coords, target_coords):
+def check_target_on_mortar_fo_axis(mortar_coords, fo_coords, target_coords, lane_width=100):
     """
-    Checks if the target is between the mortar and the FO.
-    Returns True if target is between mortar and FO, False otherwise.
+    Checks if the target is within a 'lane' between the mortar and the FO,
+    which can lead to unreliable corrections.
+    Returns True if the correction is unreliable, False otherwise.
     """
-    # Vector from mortar to FO
-    v_mf = (fo_coords[0] - mortar_coords[0], fo_coords[1] - mortar_coords[1])
-    # Vector from mortar to Target
-    v_mt = (target_coords[0] - mortar_coords[0], target_coords[1] - mortar_coords[1])
+    # Vectors
+    v_mf = (fo_coords[0] - mortar_coords[0], fo_coords[1] - mortar_coords[1]) # Mortar to FO
+    v_mt = (target_coords[0] - mortar_coords[0], target_coords[1] - mortar_coords[1]) # Mortar to Target
 
-    # Dot product of the two vectors
-    dot_product = v_mf[0] * v_mt[0] + v_mf[1] * v_mt[1]
-    
-    # Squared length of the mortar-FO vector
     len_sq_mf = v_mf[0]**2 + v_mf[1]**2
+    if len_sq_mf == 0:
+        return False # Mortar and FO are at the same spot, no axis to be on
 
-    # If the dot product is between 0 and the squared length of the mortar-FO vector,
-    # the projection of the target onto the mortar-FO line is between the mortar and the FO.
-    if 0 < dot_product < len_sq_mf:
-        # Check for collinearity
-        cross_product = v_mf[0] * v_mt[1] - v_mf[1] * v_mt[0]
-        if abs(cross_product) < 1e-6: # Using a small epsilon for floating point comparison
-             return True
-    return False
+    # 1. Check if the projection of the target lies on the segment between mortar and FO
+    dot_product = v_mf[0] * v_mt[0] + v_mf[1] * v_mt[1]
+    if not (0 < dot_product < len_sq_mf):
+        return False
 
+    # 2. Check if the target is close to the line (within the lane)
+    # Perpendicular distance from target to the line defined by mortar-FO
+    cross_product = abs(v_mf[0] * v_mt[1] - v_mf[1] * v_mt[0])
+    distance_from_line = cross_product / math.sqrt(len_sq_mf)
+    
+    return distance_from_line < (lane_width / 2)
 
 def check_danger_close(fo_coords, target_coords, dispersion):
     """
@@ -121,21 +121,3 @@ def check_danger_close(fo_coords, target_coords, dispersion):
     """
     distance_sq = (target_coords[0] - fo_coords[0])**2 + (target_coords[1] - fo_coords[1])**2
     return distance_sq <= (dispersion + 100)**2
-
-def check_unreliable_correction(mortar_coords, fo_coords, target_coords):
-    """
-    Checks if the target is on the same axis as the mortar and FO, which can lead to unreliable corrections.
-    Returns True if the correction is unreliable, False otherwise.
-    """
-    v_mf = (fo_coords[0] - mortar_coords[0], fo_coords[1] - mortar_coords[1])
-    v_mt = (target_coords[0] - mortar_coords[0], target_coords[1] - mortar_coords[1])
-    
-    mag_mf = math.sqrt(v_mf[0]**2 + v_mf[1]**2)
-    mag_mt = math.sqrt(v_mt[0]**2 + v_mt[1]**2)
-    
-    if mag_mf > 0 and mag_mt > 0:
-        dot_product = v_mf[0]*v_mt[0] + v_mf[1]*v_mt[1]
-        cos_theta = dot_product / (mag_mf * mag_mt)
-        if abs(cos_theta) > 0.99:
-            return True
-    return False

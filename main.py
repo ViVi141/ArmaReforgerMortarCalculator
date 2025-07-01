@@ -6,12 +6,62 @@ from ballistics import BALLISTIC_DATA
 from calculations import (
     parse_grid, 
     calculate_target_coords, 
-    find_valid_solutions, 
-    check_mortar_fo_axis,
-    check_danger_close,
-    check_unreliable_correction
+    find_valid_solutions,
+    check_target_on_mortar_fo_axis,
+    check_danger_close
 )
 from mission_log import MissionLog
+
+class CustomDialog(tk.Toplevel):
+    def __init__(self, parent, title, message, is_dark_mode):
+        super().__init__(parent)
+        self.title(title)
+        self.result = None
+
+        # Style configuration
+        bg_color = "#252526" if is_dark_mode else "SystemButtonFace"
+        fg_color = "#FF5555" if is_dark_mode else "red" # Neon Red for dark mode
+        button_bg = "#3C3C3C" if is_dark_mode else "SystemButtonFace"
+
+        self.configure(bg=bg_color)
+
+        # Message
+        label = ttk.Label(self, text=message, background=bg_color, foreground=fg_color, font=("Consolas", 12))
+        label.pack(padx=20, pady=20)
+
+        # Buttons
+        button_frame = ttk.Frame(self, style="TFrame")
+        button_frame.pack(pady=10)
+
+        yes_button = ttk.Button(button_frame, text="Yes", command=self.on_yes, style="TButton")
+        yes_button.pack(side="left", padx=10)
+        no_button = ttk.Button(button_frame, text="No", command=self.on_no, style="TButton")
+        no_button.pack(side="left", padx=10)
+
+        # Center the dialog on the parent window
+        self.transient(parent)
+        self.update_idletasks()
+        parent_x = parent.winfo_x()
+        parent_y = parent.winfo_y()
+        parent_width = parent.winfo_width()
+        parent_height = parent.winfo_height()
+        dialog_width = self.winfo_width()
+        dialog_height = self.winfo_height()
+        x = parent_x + (parent_width - dialog_width) // 2
+        y = parent_y + (parent_height - dialog_height) // 2
+        self.geometry(f"+{x}+{y}")
+
+        self.protocol("WM_DELETE_WINDOW", self.on_no) # Treat closing the window as a "No"
+        self.grab_set() # Make modal
+        self.wait_window()
+
+    def on_yes(self):
+        self.result = True
+        self.destroy()
+
+    def on_no(self):
+        self.result = False
+        self.destroy()
 
 class MortarCalculatorApp(tk.Tk):
     def __init__(self):
@@ -27,6 +77,7 @@ class MortarCalculatorApp(tk.Tk):
 
         self.is_dark_mode = False
         self.danger_close_confirmed = False
+        self.disable_danger_close_var = tk.BooleanVar(value=False)
         self.map_image = None
         self.map_photo = None
         self.map_view = [0, 0, 4607, 4607]  # min_e, min_n, max_e, max_n
@@ -146,6 +197,10 @@ class MortarCalculatorApp(tk.Tk):
         self.theme_button = ttk.Button(theme_frame, text="Toggle Dark Mode", command=self.toggle_theme)
         self.theme_button.pack(pady=10)
 
+        warnings_frame = ttk.LabelFrame(settings_frame, text="Warnings")
+        warnings_frame.pack(fill="x", expand=True, pady=5)
+        ttk.Checkbutton(warnings_frame, text="Disable 'Danger Close' Warning", variable=self.disable_danger_close_var).pack(pady=5, padx=5, anchor="w")
+
     def setup_results_widgets(self):
         results_frame = ttk.Frame(self.main_tab)
         results_frame.pack(fill="both", expand=True)
@@ -256,6 +311,15 @@ class MortarCalculatorApp(tk.Tk):
             self.style.configure("Treeview", background=entry_bg, foreground=fg_color, fieldbackground=entry_bg)
             self.style.configure("Treeview.Heading", background=button_bg, foreground=fg_color)
             
+            # Style the tabs
+            self.style.configure("TNotebook", background=bg_color, borderwidth=0)
+            self.style.configure("TNotebook.Tab", background=frame_bg, foreground=fg_color, padding=[5, 2])
+            self.style.map("TNotebook.Tab", background=[("selected", bg_color)], foreground=[("selected", fg_color)])
+            
+            # Style the checkbutton
+            self.style.configure("TCheckbutton", background=frame_bg, foreground=fg_color, font=("Consolas", 10))
+            self.style.map("TCheckbutton", background=[('active', '#6E6E6E')], foreground=[('active', fg_color)])
+
             self.configure(background=bg_color)
             self.graph_canvas.config(bg=frame_bg)
             self.status_label.config(foreground="#FF5555")
@@ -330,10 +394,8 @@ class MortarCalculatorApp(tk.Tk):
             target_easting, target_northing = calculate_target_coords(fo_grid_str, fo_azimuth_deg, fo_dist, fo_elev_diff, net_corr_lr, net_corr_add_drop)
             target_elev = fo_elev + fo_elev_diff
 
-            if check_mortar_fo_axis((mortar_easting, mortar_northing), (fo_easting, fo_northing), (target_easting, target_northing)):
-                self.correction_status_var.set("Target is between Mortar Team and Forward Observer. Use caution.")
-            elif check_unreliable_correction((mortar_easting, mortar_northing), (fo_easting, fo_northing), (target_easting, target_northing)):
-                self.correction_status_var.set("UNRELIABLE CORRECTION (Target on Mortar-FO Axis)")
+            if check_target_on_mortar_fo_axis((mortar_easting, mortar_northing), (fo_easting, fo_northing), (target_easting, target_northing)):
+                self.correction_status_var.set("UNRELIABLE CORRECTION (Target is between Mortar and FO)")
             
             correction_distance = math.sqrt(net_corr_lr**2 + net_corr_add_drop**2)
             if correction_distance > 0:
@@ -364,7 +426,7 @@ class MortarCalculatorApp(tk.Tk):
             least_tof_solution = valid_solutions[0]
             most_tof_solution = valid_solutions[-1]
 
-            if check_danger_close((fo_easting, fo_northing), (target_easting, target_northing), least_tof_solution['dispersion']):
+            if not self.disable_danger_close_var.get() and check_danger_close((fo_easting, fo_northing), (target_easting, target_northing), least_tof_solution['dispersion']):
                 if not self.danger_close_confirmed:
                     self.confirm_danger_close()
                     return
@@ -378,9 +440,10 @@ class MortarCalculatorApp(tk.Tk):
     def confirm_danger_close(self):
         self.status_label.config(text="DANGER CLOSE ARE YOU SURE?", foreground="red")
         self.flash_danger_warning()
+
+        dialog = CustomDialog(self, "DANGER CLOSE", "The target is dangerously close to the FO.\nAre you sure you want to proceed?", self.is_dark_mode)
         
-        confirm = messagebox.askyesno("DANGER CLOSE", "The target is dangerously close to the FO. Are you sure you want to proceed?")
-        if confirm:
+        if dialog.result:
             self.danger_close_confirmed = True
             self.calculate_all()
         else:
@@ -504,25 +567,29 @@ class MortarCalculatorApp(tk.Tk):
         
         min_e, min_n, max_e, max_n = self.map_view
         map_width = max_e - min_e
-        
-        # Since we enforce a square view, map_height should be the same as map_width
-        map_height = map_width
-        
-        cursor_e = min_e + (event.x / canvas_width) * map_width
-        # The canvas y is inverted from the map northing
-        cursor_n = max_n - (event.y / canvas_height) * map_height
+        map_height = max_n - min_n # Should be same as width
+
+        # Determine the real-world coordinates at the cursor
+        # This requires knowing the actual rendered size and position of the map on the canvas
+        scale = min(canvas_width / map_width, canvas_height / map_height)
+        pixel_width = map_width * scale
+        pixel_height = map_height * scale
+        offset_x = (canvas_width - pixel_width) / 2
+        offset_y = (canvas_height - pixel_height) / 2
+
+        # Convert cursor screen coords to map coords
+        cursor_e = min_e + (event.x - offset_x) / scale
+        cursor_n = max_n - (event.y - offset_y) / scale
 
         zoom_factor = 1.1 if event.delta > 0 else 1 / 1.1
-        
         new_map_width = map_width / zoom_factor
-        
-        # Center the new view on the cursor
-        new_min_e = cursor_e - (event.x / canvas_width) * new_map_width
+        new_map_height = map_height / zoom_factor
+
+        # New view, centered on cursor, maintaining square aspect ratio
+        new_min_e = cursor_e - (event.x - offset_x) / scale * (new_map_width / map_width)
         new_max_e = new_min_e + new_map_width
-        
-        # The y-axis calculation must also use the new width to maintain the square aspect ratio
-        new_min_n = cursor_n - (1 - (event.y / canvas_height)) * new_map_width
-        new_max_n = new_min_n + new_map_width
+        new_min_n = cursor_n - (1 - ((event.y - offset_y) / pixel_height)) * new_map_height
+        new_max_n = new_min_n + new_map_height
         
         self.map_view = [new_min_e, new_min_n, new_max_e, new_max_n]
         self.plot_positions()
@@ -555,15 +622,19 @@ class MortarCalculatorApp(tk.Tk):
         dy = event.y - self.pan_start_y
 
         canvas_width = self.graph_canvas.winfo_width()
+        canvas_height = self.graph_canvas.winfo_height()
         
         min_e, min_n, max_e, max_n = self.map_view
         map_width = max_e - min_e
-        
-        # Convert pixel delta to map coordinate delta
-        delta_e = (dx / canvas_width) * map_width
-        delta_n = (dy / canvas_width) * map_width # Use width for both to maintain aspect ratio
+        map_height = max_n - min_n
 
-        # Update map view
+        # Determine the scale to convert pixels to map units
+        scale = min(canvas_width / map_width, canvas_height / map_height)
+        
+        delta_e = dx / scale
+        delta_n = dy / scale
+
+        # Update map view by subtracting the delta (pan left moves view right)
         self.map_view = [min_e - delta_e, min_n + delta_n, max_e - delta_e, max_n + delta_n]
 
         self.pan_start_x = event.x
@@ -626,51 +697,48 @@ class MortarCalculatorApp(tk.Tk):
         canvas_width = self.graph_canvas.winfo_width()
         canvas_height = self.graph_canvas.winfo_height()
         min_e, min_n, max_e, max_n = self.map_view
-        
-        # Ensure the view is square to prevent distortion
-        map_width = max_e - min_e
-        map_height = max_n - min_n
-        if map_width > map_height:
-            diff = map_width - map_height
-            min_n -= diff / 2
-            max_n += diff / 2
-        elif map_height > map_width:
-            diff = map_height - map_width
-            min_e -= diff / 2
-            max_e += diff / 2
-        
-        # Recalculate width/height after squaring
         map_width = max_e - min_e
         map_height = max_n - min_n
 
-        if self.map_image:
+        if self.map_image and map_width > 0 and map_height > 0:
             map_scale = self.map_scale_var.get()
             img_width, img_height = self.map_image.size
 
+            # Determine the scale to fit the square map view onto the canvas without distortion
+            scale = min(canvas_width / map_width, canvas_height / map_height)
+            
+            # Calculate the size of the rendered map image
+            render_width = int(map_width * scale)
+            render_height = int(map_height * scale)
+
+            # Calculate offsets to center the image on the canvas (letterboxing)
+            offset_x = (canvas_width - render_width) // 2
+            offset_y = (canvas_height - render_height) // 2
+
+            # Crop the original image based on the map view
             crop_min_x = (min_e / map_scale) * img_width
             crop_max_x = (max_e / map_scale) * img_width
             crop_min_y = ((map_scale - max_n) / map_scale) * img_height
             crop_max_y = ((map_scale - min_n) / map_scale) * img_height
 
-            crop_min_x = max(0, crop_min_x)
-            crop_min_y = max(0, crop_min_y)
-            crop_max_x = min(img_width, crop_max_x)
-            crop_max_y = min(img_height, crop_max_y)
-
             if crop_max_x > crop_min_x and crop_max_y > crop_min_y:
                 cropped_img = self.map_image.crop((crop_min_x, crop_min_y, crop_max_x, crop_max_y))
+                resized_image = cropped_img.resize((render_width, render_height), Image.LANCZOS)
                 
-                # Resize to fit canvas (it's already a square crop)
-                resized_image = cropped_img.resize((canvas_width, canvas_height), Image.LANCZOS)
-
                 self.map_photo = ImageTk.PhotoImage(resized_image)
-                self.graph_canvas.create_image(0, 0, anchor="nw", image=self.map_photo)
+                self.graph_canvas.create_image(offset_x, offset_y, anchor="nw", image=self.map_photo)
 
         if self.last_coords:
             def transform(e, n):
-                # This transform function maps coordinates to the square view
-                x = ((e - min_e) / map_width) * canvas_width if map_width != 0 else 0
-                y = ((max_n - n) / map_height) * canvas_height if map_height != 0 else 0
+                # This transform function now accounts for the centered, non-distorted map
+                scale = min(canvas_width / map_width, canvas_height / map_height)
+                render_width = map_width * scale
+                render_height = map_height * scale
+                offset_x = (canvas_width - render_width) // 2
+                offset_y = (canvas_height - render_height) // 2
+
+                x = offset_x + ((e - min_e) * scale)
+                y = offset_y + ((max_n - n) * scale)
                 return x, y
 
             mortar_x, mortar_y = transform(self.last_coords['mortar_e'], self.last_coords['mortar_n'])
