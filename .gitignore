@@ -1,0 +1,15 @@
+# Python cache
+__pycache__/
+*.pyc
+
+# User data
+fire_missions.json
+
+# Virtual environments
+venv/
+.venv/
+
+# Distribution / packaging
+build/
+dist/
+*.spec
