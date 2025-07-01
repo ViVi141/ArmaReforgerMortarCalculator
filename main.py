@@ -186,6 +186,12 @@ class MortarCalculatorApp(tk.Tk):
         self.graph_canvas.bind("<ButtonPress-1>", self.start_pan)
         self.graph_canvas.bind("<B1-Motion>", self.pan)
 
+        # Zoom buttons
+        zoom_button_frame = ttk.Frame(graph_frame)
+        zoom_button_frame.place(relx=0.98, rely=0.02, anchor="ne")
+        ttk.Button(zoom_button_frame, text="+", width=2, command=self.zoom_in).pack()
+        ttk.Button(zoom_button_frame, text="-", width=2, command=self.zoom_out).pack()
+
         self.correction_status_var = tk.StringVar()
         self.status_label = ttk.Label(solution_frame, textvariable=self.correction_status_var, font="SegoeUI 10 bold")
         self.status_label.grid(row=0, column=0, columnspan=3, pady=(0, 5))
@@ -496,28 +502,46 @@ class MortarCalculatorApp(tk.Tk):
         canvas_width = self.graph_canvas.winfo_width()
         canvas_height = self.graph_canvas.winfo_height()
         
-        # Get map coordinates at cursor position
         min_e, min_n, max_e, max_n = self.map_view
         map_width = max_e - min_e
-        map_height = max_n - min_n
+        
+        # Since we enforce a square view, map_height should be the same as map_width
+        map_height = map_width
         
         cursor_e = min_e + (event.x / canvas_width) * map_width
+        # The canvas y is inverted from the map northing
         cursor_n = max_n - (event.y / canvas_height) * map_height
 
-        # Determine zoom factor
         zoom_factor = 1.1 if event.delta > 0 else 1 / 1.1
         
         new_map_width = map_width / zoom_factor
-        new_map_height = map_height / zoom_factor
-
+        
         # Center the new view on the cursor
         new_min_e = cursor_e - (event.x / canvas_width) * new_map_width
         new_max_e = new_min_e + new_map_width
-        new_min_n = cursor_n - (1 - event.y / canvas_height) * new_map_height
-        new_max_n = new_min_n + new_map_height
+        
+        # The y-axis calculation must also use the new width to maintain the square aspect ratio
+        new_min_n = cursor_n - (1 - (event.y / canvas_height)) * new_map_width
+        new_max_n = new_min_n + new_map_width
         
         self.map_view = [new_min_e, new_min_n, new_max_e, new_max_n]
         self.plot_positions()
+
+    def zoom_in(self):
+        # Simulate a zoom-in event at the center of the canvas
+        event = tk.Event()
+        event.delta = 120 # Standard for a single wheel-up tick
+        event.x = self.graph_canvas.winfo_width() // 2
+        event.y = self.graph_canvas.winfo_height() // 2
+        self.zoom(event)
+
+    def zoom_out(self):
+        # Simulate a zoom-out event at the center of the canvas
+        event = tk.Event()
+        event.delta = -120 # Standard for a single wheel-down tick
+        event.x = self.graph_canvas.winfo_width() // 2
+        event.y = self.graph_canvas.winfo_height() // 2
+        self.zoom(event)
 
     def start_pan(self, event):
         self.pan_start_x = event.x
@@ -531,15 +555,13 @@ class MortarCalculatorApp(tk.Tk):
         dy = event.y - self.pan_start_y
 
         canvas_width = self.graph_canvas.winfo_width()
-        canvas_height = self.graph_canvas.winfo_height()
         
         min_e, min_n, max_e, max_n = self.map_view
         map_width = max_e - min_e
-        map_height = max_n - min_n
-
+        
         # Convert pixel delta to map coordinate delta
         delta_e = (dx / canvas_width) * map_width
-        delta_n = (dy / canvas_height) * map_height # y is inverted
+        delta_n = (dy / canvas_width) * map_width # Use width for both to maintain aspect ratio
 
         # Update map view
         self.map_view = [min_e - delta_e, min_n + delta_n, max_e - delta_e, max_n + delta_n]
@@ -598,23 +620,38 @@ class MortarCalculatorApp(tk.Tk):
         self.graph_canvas.delete("all")
         
         bg_color = "#252526" if self.is_dark_mode else "white"
-        line_color = "white" if self.is_dark_mode else "black"
         mortar_color, fo_color, target_color = "blue", "red", "yellow"
         self.graph_canvas.config(bg=bg_color)
 
+        canvas_width = self.graph_canvas.winfo_width()
+        canvas_height = self.graph_canvas.winfo_height()
+        min_e, min_n, max_e, max_n = self.map_view
+        
+        # Ensure the view is square to prevent distortion
+        map_width = max_e - min_e
+        map_height = max_n - min_n
+        if map_width > map_height:
+            diff = map_width - map_height
+            min_n -= diff / 2
+            max_n += diff / 2
+        elif map_height > map_width:
+            diff = map_height - map_width
+            min_e -= diff / 2
+            max_e += diff / 2
+        
+        # Recalculate width/height after squaring
+        map_width = max_e - min_e
+        map_height = max_n - min_n
+
         if self.map_image:
-            min_e, min_n, max_e, max_n = self.map_view
             map_scale = self.map_scale_var.get()
-            
-            # Crop the part of the image that is in the current view
-            # Coordinates for crop must be in pixels of the original image
             img_width, img_height = self.map_image.size
+
             crop_min_x = (min_e / map_scale) * img_width
             crop_max_x = (max_e / map_scale) * img_width
             crop_min_y = ((map_scale - max_n) / map_scale) * img_height
             crop_max_y = ((map_scale - min_n) / map_scale) * img_height
 
-            # Ensure crop coordinates are within image bounds
             crop_min_x = max(0, crop_min_x)
             crop_min_y = max(0, crop_min_y)
             crop_max_x = min(img_width, crop_max_x)
@@ -623,30 +660,22 @@ class MortarCalculatorApp(tk.Tk):
             if crop_max_x > crop_min_x and crop_max_y > crop_min_y:
                 cropped_img = self.map_image.crop((crop_min_x, crop_min_y, crop_max_x, crop_max_y))
                 
-                canvas_width = self.graph_canvas.winfo_width()
-                canvas_height = self.graph_canvas.winfo_height()
-                
+                # Resize to fit canvas (it's already a square crop)
                 resized_image = cropped_img.resize((canvas_width, canvas_height), Image.LANCZOS)
+
                 self.map_photo = ImageTk.PhotoImage(resized_image)
                 self.graph_canvas.create_image(0, 0, anchor="nw", image=self.map_photo)
 
         if self.last_coords:
-            mortar_e, mortar_n = self.last_coords['mortar_e'], self.last_coords['mortar_n']
-            fo_e, fo_n = self.last_coords['fo_e'], self.last_coords['fo_n']
-            target_e, target_n = self.last_coords['target_e'], self.last_coords['target_n']
-
-            canvas_width = self.graph_canvas.winfo_width()
-            canvas_height = self.graph_canvas.winfo_height()
-            min_e, min_n, max_e, max_n = self.map_view
-            
             def transform(e, n):
-                x = ((e - min_e) / (max_e - min_e)) * canvas_width if max_e - min_e != 0 else 0
-                y = (1 - (n - min_n) / (max_n - min_n)) * canvas_height if max_n - min_n != 0 else 0
+                # This transform function maps coordinates to the square view
+                x = ((e - min_e) / map_width) * canvas_width if map_width != 0 else 0
+                y = ((max_n - n) / map_height) * canvas_height if map_height != 0 else 0
                 return x, y
 
-            mortar_x, mortar_y = transform(mortar_e, mortar_n)
-            fo_x, fo_y = transform(fo_e, fo_n)
-            target_x, target_y = transform(target_e, target_n)
+            mortar_x, mortar_y = transform(self.last_coords['mortar_e'], self.last_coords['mortar_n'])
+            fo_x, fo_y = transform(self.last_coords['fo_e'], self.last_coords['fo_n'])
+            target_x, target_y = transform(self.last_coords['target_e'], self.last_coords['target_n'])
             
             self.graph_canvas.create_oval(mortar_x-5, mortar_y-5, mortar_x+5, mortar_y+5, fill=mortar_color, outline="black")
             self.graph_canvas.create_text(mortar_x, mortar_y - 15, text="Mortar", fill="black")
