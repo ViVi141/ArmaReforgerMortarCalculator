@@ -489,32 +489,19 @@ class MortarCalculatorApp(tk.Tk):
 
         self.graph_canvas.config(bg=bg_color)
 
-        if self.map_image:
-            width = int(self.map_image.width * self.zoom_level)
-            height = int(self.map_image.height * self.zoom_level)
-            resized_image = self.map_image.resize((width, height), Image.LANCZOS)
-            self.map_photo = ImageTk.PhotoImage(resized_image)
-            self.graph_canvas.create_image(0, 0, anchor="nw", image=self.map_photo)
-
-        # Get canvas dimensions
         canvas_width = self.graph_canvas.winfo_width()
         canvas_height = self.graph_canvas.winfo_height()
+
+        if self.map_image:
+            # Resize the map to fit the canvas area, establishing a fixed background
+            resized_image = self.map_image.resize((canvas_width, canvas_height), Image.LANCZOS)
+            self.map_photo = ImageTk.PhotoImage(resized_image)
+            self.graph_canvas.create_image(0, 0, anchor="nw", image=self.map_photo)
         
-        # Combine all coordinates to find the bounding box
-        all_eastings = [mortar_e, fo_e, target_e]
-        all_northings = [mortar_n, fo_n, target_n]
-        
-        min_e = min(all_eastings)
-        max_e = max(all_eastings)
-        min_n = min(all_northings)
-        max_n = max(all_northings)
-        
-        # Add padding to the bounding box
-        padding = 50
-        min_e -= padding
-        max_e += padding
-        min_n -= padding
-        max_n += padding
+        # Define the map's coordinate system boundaries.
+        # This ensures a fixed scale where bottom-left is (0,0).
+        min_e, max_e = 0, 4607
+        min_n, max_n = 0, 4607
         
         # Calculate scale and offset
         scale_e = canvas_width / (max_e - min_e) if max_e - min_e != 0 else 1

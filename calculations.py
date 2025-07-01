@@ -26,17 +26,37 @@ def parse_grid(grid_str, digits=10):
     return easting, northing
 
 def calculate_target_coords(fo_grid_str, fo_azimuth_deg, fo_dist, fo_elev_diff, corr_lr, corr_add_drop):
-    """Calculates the target's coordinates based on FO data and corrections."""
-    azimuth_correction_mils = (corr_lr / fo_dist) * 1000 if fo_dist != 0 else 0
-    fo_azimuth_mils = (fo_azimuth_deg * (6400 / 360)) + azimuth_correction_mils
-    corrected_fo_dist = fo_dist + corr_add_drop
-
+    """
+    Calculates the target's coordinates based on FO data and corrections.
+    This version uses vector addition for a more accurate calculation.
+    """
+    # 1. Calculate the initial target position before corrections
     fo_easting, fo_northing = parse_grid(fo_grid_str, digits=10)
+    azimuth_rad = math.radians(fo_azimuth_deg)
     
-    azimuth_rad = (fo_azimuth_mils / 3200) * math.pi
-    target_easting = fo_easting + corrected_fo_dist * math.sin(azimuth_rad)
-    target_northing = fo_northing + corrected_fo_dist * math.cos(azimuth_rad)
-    return target_easting, target_northing
+    initial_target_easting = fo_easting + fo_dist * math.sin(azimuth_rad)
+    initial_target_northing = fo_northing + fo_dist * math.cos(azimuth_rad)
+
+    # If there are no corrections, return the initial target position
+    if corr_lr == 0 and corr_add_drop == 0:
+        return initial_target_easting, initial_target_northing
+
+    # 2. Calculate the correction vectors relative to the FO's line of sight
+    # The "Add/Drop" vector is along the line of sight (azimuth_rad)
+    add_drop_easting = corr_add_drop * math.sin(azimuth_rad)
+    add_drop_northing = corr_add_drop * math.cos(azimuth_rad)
+
+    # The "Left/Right" vector is perpendicular to the line of sight (+90 degrees)
+    # A positive corr_lr means "Right", a negative one means "Left"
+    lr_azimuth_rad = azimuth_rad + (math.pi / 2)
+    lr_easting = corr_lr * math.sin(lr_azimuth_rad)
+    lr_northing = corr_lr * math.cos(lr_azimuth_rad)
+
+    # 3. Apply the correction vectors to the initial target position
+    final_target_easting = initial_target_easting + add_drop_easting + lr_easting
+    final_target_northing = initial_target_northing + add_drop_northing + lr_northing
+    
+    return final_target_easting, final_target_northing
 
 def find_valid_solutions(ammo, distance, elev_diff):
     """Finds all valid firing solutions for a given ammo, distance, and elevation change."""
