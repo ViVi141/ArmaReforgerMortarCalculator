@@ -222,8 +222,12 @@ class MortarCalculatorApp(tk.Tk):
         ttk.Label(target_details_frame, textvariable=self.target_grid_10_var, font="SegoeUI 10 bold").grid(row=0, column=1, sticky="w", padx=5)
         ttk.Label(target_details_frame, text="Target Elevation:").grid(row=1, column=0, sticky="w", padx=5)
         ttk.Label(target_details_frame, textvariable=self.target_elev_var, font="SegoeUI 10 bold").grid(row=1, column=1, sticky="w", padx=5)
-        ttk.Label(target_details_frame, text="Mortar-Target Azimuth:").grid(row=2, column=0, sticky="w", padx=5)
-        ttk.Label(target_details_frame, textvariable=self.mortar_to_target_azimuth_var, font="SegoeUI 10 bold").grid(row=2, column=1, sticky="w", padx=5)
+        # --- Mortar-Target Azimuth (Highlighted) ---
+        azimuth_frame = ttk.Frame(target_details_frame, style="Highlight.TFrame")
+        azimuth_frame.grid(row=2, column=0, columnspan=2, sticky="ew", padx=5, pady=2)
+        ttk.Label(azimuth_frame, text="Mortar-Target Azimuth:").pack(side="left", padx=5)
+        ttk.Label(azimuth_frame, textvariable=self.mortar_to_target_azimuth_var, font="SegoeUI 10 bold").pack(side="left", padx=5)
+
         ttk.Label(target_details_frame, text="Mortar-Target Distance:").grid(row=3, column=0, sticky="w", padx=5)
         ttk.Label(target_details_frame, textvariable=self.mortar_to_target_dist_var, font="SegoeUI 10 bold").grid(row=3, column=1, sticky="w", padx=5)
         ttk.Label(target_details_frame, text="Mortar-Target Elev. Change:").grid(row=4, column=0, sticky="w", padx=5)
@@ -263,12 +267,16 @@ class MortarCalculatorApp(tk.Tk):
         self.most_tof_charge_var = tk.StringVar(value="--")
         ttk.Label(solution_frame, textvariable=self.most_tof_charge_var, font="SegoeUI 10 bold").grid(row=2, column=2, padx=5)
 
-        # Corrected Elevation
-        ttk.Label(solution_frame, text="Corrected Elevation:").grid(row=3, column=0, sticky="w", padx=5)
+        # --- Corrected Elevation (Highlighted) ---
+        elevation_frame = ttk.Frame(solution_frame, style="Highlight.TFrame")
+        elevation_frame.grid(row=3, column=0, columnspan=3, sticky="ew", padx=5, pady=2)
+        ttk.Label(elevation_frame, text="Corrected Elevation:").pack(side="left", padx=5)
+        
         self.least_tof_elev_var = tk.StringVar(value="-- MIL")
-        ttk.Label(solution_frame, textvariable=self.least_tof_elev_var, font="SegoeUI 12 bold").grid(row=3, column=1, padx=5)
+        ttk.Label(elevation_frame, textvariable=self.least_tof_elev_var, font="SegoeUI 12 bold").pack(side="left", expand=True, padx=5)
+        
         self.most_tof_elev_var = tk.StringVar(value="-- MIL")
-        ttk.Label(solution_frame, textvariable=self.most_tof_elev_var, font="SegoeUI 12 bold").grid(row=3, column=2, padx=5)
+        ttk.Label(elevation_frame, textvariable=self.most_tof_elev_var, font="SegoeUI 12 bold").pack(side="left", expand=True, padx=5)
 
         # Time of Flight
         ttk.Label(solution_frame, text="Time of Flight:").grid(row=4, column=0, sticky="w", padx=5)
@@ -319,6 +327,9 @@ class MortarCalculatorApp(tk.Tk):
             # Style the checkbutton
             self.style.configure("TCheckbutton", background=frame_bg, foreground=fg_color, font=("Consolas", 10))
             self.style.map("TCheckbutton", background=[('active', '#6E6E6E')], foreground=[('active', fg_color)])
+
+            # Style for highlighted frames
+            self.style.configure("Highlight.TFrame", background=bg_color, relief="solid", borderwidth=1, bordercolor="white")
 
             self.configure(background=bg_color)
             self.graph_canvas.config(bg=frame_bg)
