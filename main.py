@@ -33,24 +33,35 @@ class MortarCalculatorApp(tk.Tk):
         self.pan_start_x = 0
         self.pan_start_y = 0
         self.last_coords = {}
+        self.map_scale_var = tk.DoubleVar(value=4607)
 
         self.style = ttk.Style(self)
         
-        self.main_frame = ttk.Frame(self, padding="10")
-        self.main_frame.pack(pady=10, padx=10, fill="both", expand=True)
+        # Create a notebook for tabs
+        self.notebook = ttk.Notebook(self)
+        self.notebook.pack(pady=10, padx=10, fill="both", expand=True)
 
-        self.setup_input_widgets()
+        # Create frames for each tab
+        self.main_tab = ttk.Frame(self.notebook, padding="10")
+        self.settings_tab = ttk.Frame(self.notebook, padding="10")
+
+        self.notebook.add(self.main_tab, text="Main")
+        self.notebook.add(self.settings_tab, text="Settings")
+
+        self.setup_main_tab()
         self.setup_action_widgets()
         self.setup_results_widgets()
+        self.setup_settings_tab()
 
-        self.mission_log = MissionLog(self.main_frame, self)
+        self.mission_log = MissionLog(self.main_tab, self)
         
         self.ammo_type_combo.current(0)
         self.update_charge_options()
         self.toggle_theme()
 
-    def setup_input_widgets(self):
-        input_frame = ttk.Frame(self.main_frame)
+    def setup_main_tab(self):
+        # This frame will hold all the content for the main tab
+        input_frame = ttk.Frame(self.main_tab)
         input_frame.pack(fill="x", expand=True)
 
         # Mortar Position
@@ -115,15 +126,28 @@ class MortarCalculatorApp(tk.Tk):
         self.ammo_type_combo.bind("<<ComboboxSelected>>", self.update_charge_options)
 
     def setup_action_widgets(self):
-        action_frame = ttk.Frame(self.main_frame)
+        action_frame = ttk.Frame(self.main_tab)
         action_frame.pack(pady=10)
         ttk.Button(action_frame, text="Calculate Firing Solution", command=self.calculate_all).pack(side="left", padx=10)
-        self.theme_button = ttk.Button(action_frame, text="Toggle Dark Mode", command=self.toggle_theme)
-        self.theme_button.pack(side="left", padx=10)
-        ttk.Button(action_frame, text="Upload Map", command=self.upload_map).pack(side="left", padx=10)
+
+    def setup_settings_tab(self):
+        settings_frame = ttk.Frame(self.settings_tab)
+        settings_frame.pack(fill="x", expand=True, pady=5)
+
+        map_settings_frame = ttk.LabelFrame(settings_frame, text="Map Settings")
+        map_settings_frame.pack(fill="x", expand=True, pady=5)
+        
+        ttk.Label(map_settings_frame, text="Uploaded Map Size (m):").grid(row=0, column=0, padx=5, pady=2, sticky="w")
+        ttk.Entry(map_settings_frame, textvariable=self.map_scale_var, width=10).grid(row=0, column=1, padx=5, pady=2)
+        ttk.Button(map_settings_frame, text="Upload Map", command=self.upload_map).grid(row=1, column=0, columnspan=2, pady=10)
+
+        theme_frame = ttk.LabelFrame(settings_frame, text="Theme")
+        theme_frame.pack(fill="x", expand=True, pady=5)
+        self.theme_button = ttk.Button(theme_frame, text="Toggle Dark Mode", command=self.toggle_theme)
+        self.theme_button.pack(pady=10)
 
     def setup_results_widgets(self):
-        results_frame = ttk.Frame(self.main_frame)
+        results_frame = ttk.Frame(self.main_tab)
         results_frame.pack(fill="both", expand=True)
 
         left_frame = ttk.Frame(results_frame)
@@ -387,6 +411,7 @@ class MortarCalculatorApp(tk.Tk):
         self.most_tof_tof_var.set(f"{most_tof['tof']:.1f} sec")
         self.most_tof_disp_var.set(f"{most_tof['dispersion']} m")
 
+        self.auto_zoom_to_pins()
         self.plot_positions()
 
     def handle_calculation_error(self, e):
@@ -460,7 +485,8 @@ class MortarCalculatorApp(tk.Tk):
         file_path = filedialog.askopenfilename(filetypes=[("Image Files", "*.png;*.jpg;*.jpeg;*.gif;*.bmp")])
         if file_path:
             self.map_image = Image.open(file_path)
-            self.map_view = [0, 0, 4607, 4607]  # Reset view to full map
+            map_scale = self.map_scale_var.get()
+            self.map_view = [0, 0, map_scale, map_scale]  # Reset view to full map
             self.plot_positions()
 
     def zoom(self, event):
@@ -523,6 +549,51 @@ class MortarCalculatorApp(tk.Tk):
         
         self.plot_positions()
 
+    def auto_zoom_to_pins(self):
+        if not self.last_coords:
+            return
+
+        coords = [
+            (self.last_coords['mortar_e'], self.last_coords['mortar_n']),
+            (self.last_coords['fo_e'], self.last_coords['fo_n']),
+            (self.last_coords['target_e'], self.last_coords['target_n'])
+        ]
+
+        min_e = min(c[0] for c in coords)
+        max_e = max(c[0] for c in coords)
+        min_n = min(c[1] for c in coords)
+        max_n = max(c[1] for c in coords)
+
+        # Add some padding
+        padding_e = (max_e - min_e) * 0.2
+        padding_n = (max_n - min_n) * 0.2
+        
+        # Handle cases where padding is zero
+        if padding_e == 0:
+            padding_e = 100 # default padding
+        if padding_n == 0:
+            padding_n = 100 # default padding
+
+        view_min_e = min_e - padding_e
+        view_max_e = max_e + padding_e
+        view_min_n = min_n - padding_n
+        view_max_n = max_n + padding_n
+
+        # Make the view square
+        width = view_max_e - view_min_e
+        height = view_max_n - view_min_n
+        
+        if width > height:
+            diff = width - height
+            view_min_n -= diff / 2
+            view_max_n += diff / 2
+        elif height > width:
+            diff = height - width
+            view_min_e -= diff / 2
+            view_max_e += diff / 2
+
+        self.map_view = [view_min_e, view_min_n, view_max_e, view_max_n]
+
     def plot_positions(self):
         self.graph_canvas.delete("all")
         
@@ -533,14 +604,15 @@ class MortarCalculatorApp(tk.Tk):
 
         if self.map_image:
             min_e, min_n, max_e, max_n = self.map_view
+            map_scale = self.map_scale_var.get()
             
             # Crop the part of the image that is in the current view
             # Coordinates for crop must be in pixels of the original image
             img_width, img_height = self.map_image.size
-            crop_min_x = (min_e / 4607) * img_width
-            crop_max_x = (max_e / 4607) * img_width
-            crop_min_y = ((4607 - max_n) / 4607) * img_height
-            crop_max_y = ((4607 - min_n) / 4607) * img_height
+            crop_min_x = (min_e / map_scale) * img_width
+            crop_max_x = (max_e / map_scale) * img_width
+            crop_min_y = ((map_scale - max_n) / map_scale) * img_height
+            crop_max_y = ((map_scale - min_n) / map_scale) * img_height
 
             # Ensure crop coordinates are within image bounds
             crop_min_x = max(0, crop_min_x)
