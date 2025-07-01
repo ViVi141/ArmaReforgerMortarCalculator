@@ -29,9 +29,10 @@ class MortarCalculatorApp(tk.Tk):
         self.danger_close_confirmed = False
         self.map_image = None
         self.map_photo = None
-        self.zoom_level = 1.0
+        self.map_view = [0, 0, 4607, 4607]  # min_e, min_n, max_e, max_n
         self.pan_start_x = 0
         self.pan_start_y = 0
+        self.last_coords = {}
 
         self.style = ttk.Style(self)
         
@@ -365,6 +366,11 @@ class MortarCalculatorApp(tk.Tk):
         self.flash_job = self.after(500, self.flash_danger_warning)
 
     def update_ui_with_solution(self, mortar_e, mortar_n, fo_e, fo_n, target_e, target_n, target_elev, azimuth_mils_mt, mortar_target_dist, mortar_target_elev_diff, least_tof, most_tof):
+        self.last_coords = {
+            'mortar_e': mortar_e, 'mortar_n': mortar_n,
+            'fo_e': fo_e, 'fo_n': fo_n,
+            'target_e': target_e, 'target_n': target_n
+        }
         self.target_grid_10_var.set(f"{int(round(target_e)):05d} {int(round(target_n)):05d}")
         self.target_elev_var.set(f"{target_elev:.1f} m")
         self.mortar_to_target_azimuth_var.set(f"{azimuth_mils_mt:.0f} MIL")
@@ -381,7 +387,7 @@ class MortarCalculatorApp(tk.Tk):
         self.most_tof_tof_var.set(f"{most_tof['tof']:.1f} sec")
         self.most_tof_disp_var.set(f"{most_tof['dispersion']} m")
 
-        self.plot_positions(mortar_e, mortar_n, fo_e, fo_n, target_e, target_n)
+        self.plot_positions()
 
     def handle_calculation_error(self, e):
         self.least_tof_charge_var.set("ERROR")
@@ -454,79 +460,128 @@ class MortarCalculatorApp(tk.Tk):
         file_path = filedialog.askopenfilename(filetypes=[("Image Files", "*.png;*.jpg;*.jpeg;*.gif;*.bmp")])
         if file_path:
             self.map_image = Image.open(file_path)
-            self.zoom_level = 1.0
-            self.plot_positions(0,0,0,0,0,0) # Redraw with map
+            self.map_view = [0, 0, 4607, 4607]  # Reset view to full map
+            self.plot_positions()
 
     def zoom(self, event):
-        if self.map_image:
-            if event.delta > 0:
-                self.zoom_level *= 1.1
-            else:
-                self.zoom_level /= 1.1
-            self.plot_positions(0,0,0,0,0,0) # Redraw with new zoom
+        if not self.map_image:
+            return
+
+        canvas_width = self.graph_canvas.winfo_width()
+        canvas_height = self.graph_canvas.winfo_height()
+        
+        # Get map coordinates at cursor position
+        min_e, min_n, max_e, max_n = self.map_view
+        map_width = max_e - min_e
+        map_height = max_n - min_n
+        
+        cursor_e = min_e + (event.x / canvas_width) * map_width
+        cursor_n = max_n - (event.y / canvas_height) * map_height
+
+        # Determine zoom factor
+        zoom_factor = 1.1 if event.delta > 0 else 1 / 1.1
+        
+        new_map_width = map_width / zoom_factor
+        new_map_height = map_height / zoom_factor
+
+        # Center the new view on the cursor
+        new_min_e = cursor_e - (event.x / canvas_width) * new_map_width
+        new_max_e = new_min_e + new_map_width
+        new_min_n = cursor_n - (1 - event.y / canvas_height) * new_map_height
+        new_max_n = new_min_n + new_map_height
+        
+        self.map_view = [new_min_e, new_min_n, new_max_e, new_max_n]
+        self.plot_positions()
 
     def start_pan(self, event):
         self.pan_start_x = event.x
         self.pan_start_y = event.y
 
     def pan(self, event):
-        if self.map_image:
-            dx = event.x - self.pan_start_x
-            dy = event.y - self.pan_start_y
-            self.graph_canvas.move("all", dx, dy)
-            self.pan_start_x = event.x
-            self.pan_start_y = event.y
-
-    def plot_positions(self, mortar_e, mortar_n, fo_e, fo_n, target_e, target_n):
-        self.graph_canvas.delete("all")
-        
-        # Define colors based on theme
-        bg_color = "#252526" if self.is_dark_mode else "white"
-        line_color = "white" if self.is_dark_mode else "black"
-        mortar_color = "blue"
-        fo_color = "red"
-        target_color = "yellow"
-
-        self.graph_canvas.config(bg=bg_color)
+        if not self.map_image:
+            return
+            
+        dx = event.x - self.pan_start_x
+        dy = event.y - self.pan_start_y
 
         canvas_width = self.graph_canvas.winfo_width()
         canvas_height = self.graph_canvas.winfo_height()
+        
+        min_e, min_n, max_e, max_n = self.map_view
+        map_width = max_e - min_e
+        map_height = max_n - min_n
+
+        # Convert pixel delta to map coordinate delta
+        delta_e = (dx / canvas_width) * map_width
+        delta_n = (dy / canvas_height) * map_height # y is inverted
+
+        # Update map view
+        self.map_view = [min_e - delta_e, min_n + delta_n, max_e - delta_e, max_n + delta_n]
+
+        self.pan_start_x = event.x
+        self.pan_start_y = event.y
+        
+        self.plot_positions()
+
+    def plot_positions(self):
+        self.graph_canvas.delete("all")
+        
+        bg_color = "#252526" if self.is_dark_mode else "white"
+        line_color = "white" if self.is_dark_mode else "black"
+        mortar_color, fo_color, target_color = "blue", "red", "yellow"
+        self.graph_canvas.config(bg=bg_color)
 
         if self.map_image:
-            # Resize the map to fit the canvas area, establishing a fixed background
-            resized_image = self.map_image.resize((canvas_width, canvas_height), Image.LANCZOS)
-            self.map_photo = ImageTk.PhotoImage(resized_image)
-            self.graph_canvas.create_image(0, 0, anchor="nw", image=self.map_photo)
-        
-        # Define the map's coordinate system boundaries.
-        # This ensures a fixed scale where bottom-left is (0,0).
-        min_e, max_e = 0, 4607
-        min_n, max_n = 0, 4607
-        
-        # Calculate scale and offset
-        scale_e = canvas_width / (max_e - min_e) if max_e - min_e != 0 else 1
-        scale_n = canvas_height / (max_n - min_n) if max_n - min_n != 0 else 1
-        scale = min(scale_e, scale_n)
-        
-        def transform(e, n):
-            x = (e - min_e) * scale
-            y = canvas_height - (n - min_n) * scale
-            return x, y
+            min_e, min_n, max_e, max_n = self.map_view
+            
+            # Crop the part of the image that is in the current view
+            # Coordinates for crop must be in pixels of the original image
+            img_width, img_height = self.map_image.size
+            crop_min_x = (min_e / 4607) * img_width
+            crop_max_x = (max_e / 4607) * img_width
+            crop_min_y = ((4607 - max_n) / 4607) * img_height
+            crop_max_y = ((4607 - min_n) / 4607) * img_height
 
-        # Transform coordinates
-        mortar_x, mortar_y = transform(mortar_e, mortar_n)
-        fo_x, fo_y = transform(fo_e, fo_n)
-        target_x, target_y = transform(target_e, target_n)
-        
-        # Draw elements
-        self.graph_canvas.create_oval(mortar_x-5, mortar_y-5, mortar_x+5, mortar_y+5, fill=mortar_color, outline=line_color)
-        self.graph_canvas.create_text(mortar_x, mortar_y - 15, text="Mortar", fill=line_color)
-        
-        self.graph_canvas.create_oval(fo_x-5, fo_y-5, fo_x+5, fo_y+5, fill=fo_color, outline=line_color)
-        self.graph_canvas.create_text(fo_x, fo_y - 15, text="FO", fill=line_color)
-        
-        self.graph_canvas.create_polygon(target_x, target_y-7, target_x-7, target_y+7, target_x+7, target_y+7, fill=target_color, outline=line_color)
-        self.graph_canvas.create_text(target_x, target_y + 15, text="Target", fill=line_color)
+            # Ensure crop coordinates are within image bounds
+            crop_min_x = max(0, crop_min_x)
+            crop_min_y = max(0, crop_min_y)
+            crop_max_x = min(img_width, crop_max_x)
+            crop_max_y = min(img_height, crop_max_y)
+
+            if crop_max_x > crop_min_x and crop_max_y > crop_min_y:
+                cropped_img = self.map_image.crop((crop_min_x, crop_min_y, crop_max_x, crop_max_y))
+                
+                canvas_width = self.graph_canvas.winfo_width()
+                canvas_height = self.graph_canvas.winfo_height()
+                
+                resized_image = cropped_img.resize((canvas_width, canvas_height), Image.LANCZOS)
+                self.map_photo = ImageTk.PhotoImage(resized_image)
+                self.graph_canvas.create_image(0, 0, anchor="nw", image=self.map_photo)
+
+        if self.last_coords:
+            mortar_e, mortar_n = self.last_coords['mortar_e'], self.last_coords['mortar_n']
+            fo_e, fo_n = self.last_coords['fo_e'], self.last_coords['fo_n']
+            target_e, target_n = self.last_coords['target_e'], self.last_coords['target_n']
+
+            canvas_width = self.graph_canvas.winfo_width()
+            canvas_height = self.graph_canvas.winfo_height()
+            min_e, min_n, max_e, max_n = self.map_view
+            
+            def transform(e, n):
+                x = ((e - min_e) / (max_e - min_e)) * canvas_width if max_e - min_e != 0 else 0
+                y = (1 - (n - min_n) / (max_n - min_n)) * canvas_height if max_n - min_n != 0 else 0
+                return x, y
+
+            mortar_x, mortar_y = transform(mortar_e, mortar_n)
+            fo_x, fo_y = transform(fo_e, fo_n)
+            target_x, target_y = transform(target_e, target_n)
+            
+            self.graph_canvas.create_oval(mortar_x-5, mortar_y-5, mortar_x+5, mortar_y+5, fill=mortar_color, outline="black")
+            self.graph_canvas.create_text(mortar_x, mortar_y - 15, text="Mortar", fill="black")
+            self.graph_canvas.create_oval(fo_x-5, fo_y-5, fo_x+5, fo_y+5, fill=fo_color, outline="black")
+            self.graph_canvas.create_text(fo_x, fo_y - 15, text="FO", fill="black")
+            self.graph_canvas.create_polygon(target_x, target_y-7, target_x-7, target_y+7, target_x+7, target_y+7, fill=target_color, outline="black")
+            self.graph_canvas.create_text(target_x, target_y + 15, text="Target", fill="black")
 
 if __name__ == "__main__":
     app = MortarCalculatorApp()
