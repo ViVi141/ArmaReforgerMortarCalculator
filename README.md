@@ -35,7 +35,22 @@ A mortar calculator for Arma Reforger designed to assist with indirect fire miss
     *   **Tactical Tip:** For a rapid barrage, you can fire the charge with the most time of flight first, then switch to the charge with the least time of flight. After about half the time has elapsed for the first round, begin firing the faster rounds. This gives the FO time to call for corrections while still delivering a high volume of fire.
 5.  **Log Mission:** Give the mission a name and click "Log Current Mission" to save it for later. You can reload and adjust missions as needed.
 
+### Map Settings & Customization
+
+The calculator includes a powerful map management system accessible via the **Settings** tab.
+
+*   **Map Selection:** Choose from preloaded maps (Zarichne, Serhiivka, etc.) or maps you have uploaded.
+*   **Custom Dimensions:** The system supports rectangular maps. When you select a map, its dimensions will be loaded automatically.
+*   **Uploading New Maps:**
+    1.  Go to **Settings** -> **Map Settings**.
+    2.  Enter the map's maximum X and Y dimensions in meters.
+    3.  Click **"Upload New Map"** and select the image file.
+    4.  The map will be copied to the application's `maps` folder and its settings will be saved for future use.
+
+### Advanced Targeting
+
+For rapid target acquisition, an advanced mode can be activated in the settings panel. This allows you to **right-click** directly on the map to set a target's location, bypassing the need for FO data.
+
 ### Current Status & Notes
 
 *   **Fire Mission Corrections:** This feature is currently a work in progress and may not be reliable.
-*   **Map Upload:** A map upload is not required for the visual representation to work. A map is primarily for checking accuracy. All items on the map could be +/- several meters if the map is not a perfect square or if the scale is set up incorrectly. A future update will allow for individual X and Y limits to be set.
