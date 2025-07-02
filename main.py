@@ -16,8 +16,10 @@ from calculations import (
 )
 from mission_log import MissionLog
 from config.config_manager import ConfigManager
+from config.theme_manager import ThemeManager
 from ui.map_view import MapView
 from ui.settings_view import SettingsView
+from ui.fire_mission_planner_view import FireMissionPlannerView
 
 class CustomDialog(tk.Toplevel):
     def __init__(self, parent, title, message, is_dark_mode):
@@ -60,13 +62,13 @@ class MortarCalculatorApp(tk.Tk):
         super().__init__()
         self.title("Arma Reforger Mortar Calculator")
         screen_width, screen_height = self.winfo_screenwidth(), self.winfo_screenheight()
-        width, height = screen_width // 2, screen_height
-        x, y = screen_width // 2, 0
+        width, height = 1015, 1180
+        x = (screen_width - width) // 2
+        y = (screen_height - height) // 2
         self.geometry(f"{width}x{height}+{x}+{y}")
 
         # Core Application State
         self.is_dark_mode = False
-        self.danger_close_confirmed = False
         self.map_image = None
         self.map_photo = None
         self.map_view = [0, 0, 4607, 4607]
@@ -82,8 +84,10 @@ class MortarCalculatorApp(tk.Tk):
         self.admin_mode_enabled = tk.BooleanVar(value=False)
         self.mortar_grid_var = tk.StringVar(value="0000000000")
         self.mortar_elev_var = tk.DoubleVar(value=100)
+        self.mortar_callsign_var = tk.StringVar()
         self.fo_grid_var = tk.StringVar(value="0000000000")
         self.fo_elev_var = tk.DoubleVar(value=100)
+        self.fo_id_var = tk.StringVar()
         self.fo_azimuth_var = tk.DoubleVar(value=0)
         self.fo_dist_var = tk.DoubleVar(value=1000)
         self.fo_elev_diff_var = tk.DoubleVar(value=0)
@@ -105,28 +109,39 @@ class MortarCalculatorApp(tk.Tk):
         self.most_tof_elev_var = tk.StringVar(value="-- MIL")
         self.most_tof_tof_var = tk.StringVar(value="-- sec")
         self.most_tof_disp_var = tk.StringVar(value="-- m")
+        self.quick_azimuth_var = tk.StringVar(value="---- MIL")
+        self.quick_least_tof_elev_var = tk.StringVar(value="C-: ---- MIL")
+        self.quick_most_tof_elev_var = tk.StringVar(value="C-: ---- MIL")
 
         self.style = ttk.Style(self)
         self.config_manager = ConfigManager()
+        self.theme_manager = ThemeManager(self)
         
         self.setup_ui()
         
         self.ammo_type_combo.current(0)
         self.update_charge_options()
-        self.toggle_theme()
+        self.theme_manager.apply_theme()
         self.after(100, self.post_init_load)
+
+        self.bind('<Control-Return>', lambda event: self.calculate_all())
+        self.bind('<Control-n>', lambda event: self.new_mission())
+        self.bind('<Control-l>', lambda event: self.load_mission())
 
     def setup_ui(self):
         self.notebook = ttk.Notebook(self)
         self.notebook.pack(pady=10, padx=10, fill="both", expand=True)
         self.main_tab = ttk.Frame(self.notebook, padding="10")
+        self.fire_mission_planner_tab = ttk.Frame(self.notebook)
         self.settings_tab = ttk.Frame(self.notebook)
         self.notebook.add(self.main_tab, text="Main")
+        self.notebook.add(self.fire_mission_planner_tab, text="Fire Mission Planner")
         self.notebook.add(self.settings_tab, text="Settings")
 
         self.setup_main_tab()
         self.setup_action_widgets()
         self.setup_results_widgets()
+        self.setup_fire_mission_planner_tab()
         self.setup_settings_tab()
         self.mission_log = MissionLog(self.main_tab, self)
 
@@ -150,6 +165,8 @@ class MortarCalculatorApp(tk.Tk):
         ttk.Entry(mortar_frame, textvariable=self.mortar_grid_var, width=12).grid(row=0, column=1, padx=5, pady=2)
         ttk.Label(mortar_frame, text="Elevation (m):").grid(row=0, column=2, padx=5, pady=2, sticky="w")
         ttk.Entry(mortar_frame, textvariable=self.mortar_elev_var, width=7).grid(row=0, column=3, padx=5, pady=2)
+        ttk.Label(mortar_frame, text="Callsign:").grid(row=1, column=0, padx=5, pady=2, sticky="w")
+        ttk.Entry(mortar_frame, textvariable=self.mortar_callsign_var, width=12).grid(row=1, column=1, padx=5, pady=2)
 
         fo_frame = ttk.LabelFrame(input_frame, text="2. Forward Observer (FO) Data")
         fo_frame.pack(fill="x", expand=True, pady=5)
@@ -157,6 +174,8 @@ class MortarCalculatorApp(tk.Tk):
         ttk.Entry(fo_frame, textvariable=self.fo_grid_var, width=12).grid(row=0, column=1, padx=5, pady=2)
         ttk.Label(fo_frame, text="FO Elevation (m):").grid(row=0, column=2, padx=5, pady=2, sticky="w")
         ttk.Entry(fo_frame, textvariable=self.fo_elev_var, width=7).grid(row=0, column=3, padx=5, pady=2)
+        ttk.Label(fo_frame, text="FO ID:").grid(row=0, column=4, padx=5, pady=2, sticky="w")
+        ttk.Entry(fo_frame, textvariable=self.fo_id_var, width=12).grid(row=0, column=5, padx=5, pady=2)
         ttk.Label(fo_frame, text="Azimuth to Target (Degrees):").grid(row=1, column=0, padx=5, pady=2, sticky="w")
         ttk.Entry(fo_frame, textvariable=self.fo_azimuth_var, width=7).grid(row=1, column=1, padx=5, pady=2)
         ttk.Label(fo_frame, text="Distance to Target (m):").grid(row=1, column=2, padx=5, pady=2, sticky="w")
@@ -182,10 +201,29 @@ class MortarCalculatorApp(tk.Tk):
         self.ammo_type_combo.grid(row=0, column=1, padx=5, pady=2)
         self.ammo_type_combo.bind("<<ComboboxSelected>>", self.update_charge_options)
 
+        quick_fire_frame = ttk.LabelFrame(input_frame, text="Quick Fire Data")
+        quick_fire_frame.pack(fill="x", expand=True, pady=5)
+        
+        ttk.Label(quick_fire_frame, text="Azimuth:").grid(row=0, column=0, padx=5, pady=2, sticky="w")
+        ttk.Label(quick_fire_frame, textvariable=self.quick_azimuth_var, style="QuickFire.TLabel").grid(row=0, column=1, padx=5, pady=2, sticky="w")
+        
+        ttk.Label(quick_fire_frame, text="Least ToF Elev:").grid(row=1, column=0, padx=5, pady=2, sticky="w")
+        ttk.Label(quick_fire_frame, textvariable=self.quick_least_tof_elev_var, style="QuickFire.TLabel").grid(row=1, column=1, padx=5, pady=2, sticky="w")
+
+        ttk.Label(quick_fire_frame, text="Most ToF Elev:").grid(row=2, column=0, padx=5, pady=2, sticky="w")
+        ttk.Label(quick_fire_frame, textvariable=self.quick_most_tof_elev_var, style="QuickFire.TLabel").grid(row=2, column=1, padx=5, pady=2, sticky="w")
+
+        self.danger_close_label = ttk.Label(quick_fire_frame, text="DANGER CLOSE FIRE MISSION", style="DangerClose.TLabel")
+        self.danger_close_label.grid(row=0, column=2, rowspan=3, padx=20)
+        self.danger_close_label.grid_remove()
+
     def setup_action_widgets(self):
         action_frame = ttk.Frame(self.main_tab)
         action_frame.pack(pady=10)
         ttk.Button(action_frame, text="Calculate Firing Solution", command=self.calculate_all).pack(side="left", padx=10)
+
+    def setup_fire_mission_planner_tab(self):
+        self.fire_mission_planner_view = FireMissionPlannerView(self.fire_mission_planner_tab, self)
 
     def setup_settings_tab(self):
         self.settings_view = SettingsView(self.settings_tab, self)
@@ -277,6 +315,8 @@ class MortarCalculatorApp(tk.Tk):
             self.style.configure("Highlight.TLabel", background=bg_color, foreground=fg_color, font=("Consolas", 10))
             self.style.configure("Highlight.Bold.TLabel", background=bg_color, foreground=fg_color, font=("Consolas", 10, "bold"))
             self.style.configure("Highlight.BigBold.TLabel", background=bg_color, foreground=fg_color, font=("Consolas", 12, "bold"))
+            self.style.configure("QuickFire.TLabel", background=frame_bg, foreground="red", font=("Consolas", 14, "bold"))
+            self.style.configure("DangerClose.TLabel", background=frame_bg, foreground="red", font=("Consolas", 18, "bold"))
             self.configure(background=bg_color)
             self.map_view_widget.graph_canvas.config(bg=frame_bg)
             self.status_label.config(foreground="#FF5555")
@@ -284,6 +324,8 @@ class MortarCalculatorApp(tk.Tk):
                 self.settings_view.admin_status_label.config(foreground="#00FF00")
             if hasattr(self.settings_view, 'hidden_button_label'):
                 self.settings_view.hidden_button_label.config(bg=bg_color)
+            if hasattr(self, 'fire_mission_planner_view'):
+                self.fire_mission_planner_view.apply_theme()
         else:
             self.settings_view.theme_button.config(text="Toggle Dark Mode")
             self.style.theme_use('vista')
@@ -298,6 +340,8 @@ class MortarCalculatorApp(tk.Tk):
                 self.settings_view.admin_status_label.config(foreground="green")
             if hasattr(self.settings_view, 'hidden_button_label'):
                 self.settings_view.hidden_button_label.config(bg=self.cget('bg'))
+            if hasattr(self, 'fire_mission_planner_view'):
+                self.fire_mission_planner_view.apply_theme()
 
     def update_charge_options(self, event=None):
         selected_ammo = self.ammo_type_var.get()
@@ -329,6 +373,9 @@ class MortarCalculatorApp(tk.Tk):
     def calculate_all(self):
         try:
             self.correction_status_var.set("")
+            if hasattr(self, 'flash_dc_job'):
+                self.after_cancel(self.flash_dc_job)
+                self.danger_close_label.grid_remove()
             mortar_grid_str, mortar_elev = self.mortar_grid_var.get(), self.mortar_elev_var.get()
             corr_lr, corr_ad = self.corr_lr_var.get(), self.corr_ad_var.get()
             ammo, spotting_charge = self.ammo_type_var.get(), self.spotting_charge_var.get()
@@ -370,19 +417,25 @@ class MortarCalculatorApp(tk.Tk):
             valid_solutions.sort(key=lambda x: x["tof"])
             least_tof_solution, most_tof_solution = valid_solutions[0], valid_solutions[-1]
 
-            if not self.disable_danger_close_var.get() and check_danger_close((fo_easting, fo_northing), (target_easting, target_northing), least_tof_solution['dispersion']):
-                if not self.danger_close_confirmed:
-                    self.confirm_danger_close()
+            danger_close_dist = self.config_manager.get_danger_close_distance()
+            is_danger_close = not self.disable_danger_close_var.get() and check_danger_close((fo_easting, fo_northing), (target_easting, target_northing), least_tof_solution['dispersion'], danger_close_dist)
+
+            if is_danger_close:
+                if not self.confirm_danger_close():
+                    self.clear_solution()
                     return
 
             self.update_ui_with_solution(mortar_easting, mortar_northing, fo_easting, fo_northing, target_easting, target_northing, target_elev, azimuth_mils_mt, mortar_target_dist, mortar_target_elev_diff, least_tof_solution, most_tof_solution)
+            
+            if is_danger_close:
+                self.danger_close_label.grid(row=0, column=2, rowspan=3, padx=20)
+                self.flash_danger_close_label()
             
             if corr_lr != 0 or corr_ad != 0:
                 new_azimuth_deg, new_dist = calculate_new_fo_data((fo_easting, fo_northing), (target_easting, target_northing))
                 self.fo_azimuth_var.set(round(new_azimuth_deg, 1))
                 self.fo_dist_var.set(round(new_dist, 1))
 
-            self.danger_close_confirmed = False
             self.corr_lr_var.set(0)
             self.corr_ad_var.set(0)
         except Exception as e:
@@ -392,19 +445,25 @@ class MortarCalculatorApp(tk.Tk):
         self.status_label.config(text="DANGER CLOSE ARE YOU SURE?", foreground="red")
         self.flash_danger_warning()
         dialog = CustomDialog(self, "DANGER CLOSE", "The target is dangerously close to the FO.\nAre you sure you want to proceed?", self.is_dark_mode)
-        if dialog.result:
-            self.danger_close_confirmed = True
-            self.calculate_all()
-        else:
-            self.clear_solution()
+
+        if hasattr(self, 'flash_job'):
+            self.after_cancel(self.flash_job)
         self.status_label.config(text="")
-        self.after_cancel(self.flash_job)
+
+        return dialog.result
 
     def flash_danger_warning(self):
         current_color = self.status_label.cget("foreground")
         next_color = "white" if current_color == "red" else "red"
         self.status_label.config(foreground=next_color)
-        self.flash_job = self.after(500, self.flash_danger_warning)
+        self.flash_job = self.after(353, self.flash_danger_warning)
+
+    def flash_danger_close_label(self):
+        if self.danger_close_label.winfo_viewable():
+            self.danger_close_label.grid_remove()
+        else:
+            self.danger_close_label.grid(row=0, column=2, rowspan=3, padx=20)
+        self.flash_dc_job = self.after(353, self.flash_danger_close_label)
 
     def update_ui_with_solution(self, mortar_e, mortar_n, fo_e, fo_n, target_e, target_n, target_elev, azimuth_mils_mt, mortar_target_dist, mortar_target_elev_diff, least_tof, most_tof):
         self.last_coords = {'mortar_e': mortar_e, 'mortar_n': mortar_n, 'fo_e': fo_e, 'fo_n': fo_n, 'target_e': target_e, 'target_n': target_n}
@@ -416,6 +475,9 @@ class MortarCalculatorApp(tk.Tk):
         self.least_tof_charge_var.set(f"{least_tof['charge']}")
         self.least_tof_elev_var.set(f"{least_tof['elev']:.0f} MIL")
         self.least_tof_tof_var.set(f"{least_tof['tof']:.1f} sec")
+        self.quick_azimuth_var.set(f"{azimuth_mils_mt:.0f} MIL")
+        self.quick_least_tof_elev_var.set(f"C-{least_tof['charge']}: {least_tof['elev']:.0f} MIL")
+        self.quick_most_tof_elev_var.set(f"C-{most_tof['charge']}: {most_tof['elev']:.0f} MIL")
         self.least_tof_disp_var.set(f"{least_tof['dispersion']} m")
         self.most_tof_charge_var.set(f"{most_tof['charge']}")
         self.most_tof_elev_var.set(f"{most_tof['elev']:.0f} MIL")
@@ -428,6 +490,9 @@ class MortarCalculatorApp(tk.Tk):
         self.least_tof_charge_var.set("ERROR")
         self.least_tof_elev_var.set(str(e))
         self.clear_solution(clear_error=False)
+        self.quick_azimuth_var.set("---- MIL")
+        self.quick_least_tof_elev_var.set("C-: ---- MIL")
+        self.quick_most_tof_elev_var.set("C-: ---- MIL")
 
     def clear_solution(self, clear_error=True):
         if clear_error:
@@ -440,6 +505,9 @@ class MortarCalculatorApp(tk.Tk):
         self.most_tof_tof_var.set("-- sec")
         self.most_tof_disp_var.set("-- m")
         self.correction_status_var.set("")
+        self.quick_azimuth_var.set("---- MIL")
+        self.quick_least_tof_elev_var.set("C-: ---- MIL")
+        self.quick_most_tof_elev_var.set("C-: ---- MIL")
 
     def get_current_mission_data_for_log(self):
         try:
@@ -447,14 +515,16 @@ class MortarCalculatorApp(tk.Tk):
             calculated_target_grid = f"{int(round(target_easting)):05d} {int(round(target_northing)):05d}"
         except Exception:
             calculated_target_grid = "Calculation Error"
-        return {"target_name": self.mission_log.target_name_var.get(), "mortar_grid": self.mortar_grid_var.get(), "mortar_elev": self.mortar_elev_var.get(), "fo_grid": self.fo_grid_var.get(), "fo_elev": self.fo_elev_var.get(), "fo_azimuth_deg": self.fo_azimuth_var.get(), "fo_dist": self.fo_dist_var.get(), "fo_elev_diff": self.fo_elev_diff_var.get(), "corr_lr": self.corr_lr_var.get(), "corr_ad": self.corr_ad_var.get(), "spotting_charge": self.spotting_charge_var.get(), "ammo": self.ammo_type_var.get(), "calculated_target_grid": calculated_target_grid, "mortar_to_target_azimuth": self.mortar_to_target_azimuth_var.get(), "mortar_to_target_dist": self.mortar_to_target_dist_var.get()}
+        return {"target_name": self.mission_log.target_name_var.get(), "mortar_grid": self.mortar_grid_var.get(), "mortar_elev": self.mortar_elev_var.get(), "mortar_callsign": self.mortar_callsign_var.get(), "fo_grid": self.fo_grid_var.get(), "fo_elev": self.fo_elev_var.get(), "fo_id": self.fo_id_var.get(), "fo_azimuth_deg": self.fo_azimuth_var.get(), "fo_dist": self.fo_dist_var.get(), "fo_elev_diff": self.fo_elev_diff_var.get(), "corr_lr": self.corr_lr_var.get(), "corr_ad": self.corr_ad_var.get(), "spotting_charge": self.spotting_charge_var.get(), "ammo": self.ammo_type_var.get(), "calculated_target_grid": calculated_target_grid, "mortar_to_target_azimuth": self.mortar_to_target_azimuth_var.get(), "mortar_to_target_dist": self.mortar_to_target_dist_var.get()}
 
     def load_mission_data_from_log(self, mission_data):
         self.mission_log.target_name_var.set(mission_data.get("target_name", "Target"))
         self.mortar_grid_var.set(mission_data.get("mortar_grid", ""))
         self.mortar_elev_var.set(mission_data.get("mortar_elev", 0))
+        self.mortar_callsign_var.set(mission_data.get("mortar_callsign", ""))
         self.fo_grid_var.set(mission_data.get("fo_grid", ""))
         self.fo_elev_var.set(mission_data.get("fo_elev", 0))
+        self.fo_id_var.set(mission_data.get("fo_id", ""))
         self.fo_azimuth_var.set(mission_data.get("fo_azimuth_deg", 0))
         self.fo_dist_var.set(mission_data.get("fo_dist", 0))
         self.fo_elev_diff_var.set(mission_data.get("fo_elev_diff", 0))
@@ -480,6 +550,32 @@ class MortarCalculatorApp(tk.Tk):
                 mission_data = json.load(f)
             self.load_mission_data_from_log(mission_data)
             messagebox.showinfo("Load Mission", "Mission loaded successfully.")
+
+    def new_mission(self):
+        """Clears all input fields for a new mission."""
+        self.mortar_grid_var.set("0000000000")
+        self.mortar_elev_var.set(100)
+        self.mortar_callsign_var.set("")
+        self.fo_grid_var.set("0000000000")
+        self.fo_elev_var.set(100)
+        self.fo_id_var.set("")
+        self.fo_azimuth_var.set(0)
+        self.fo_dist_var.set(1000)
+        self.fo_elev_diff_var.set(0)
+        self.corr_lr_var.set(0)
+        self.corr_ad_var.set(0)
+        self.clear_solution()
+        self.target_grid_10_var.set("----- -----")
+        self.target_elev_var.set("-- m")
+        self.mortar_to_target_azimuth_var.set("-- MIL")
+        self.mortar_to_target_dist_var.set("-- m")
+        self.mortar_to_target_elev_diff_var.set("-- m")
+        self.last_coords = {}
+        self.admin_target_pin = None
+        self.map_view_widget.plot_positions()
+        if hasattr(self, 'flash_dc_job'):
+            self.after_cancel(self.flash_dc_job)
+            self.danger_close_label.grid_remove()
 
     def load_map_image_and_view(self):
         map_name = self.selected_map_var.get()

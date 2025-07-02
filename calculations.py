@@ -135,13 +135,13 @@ def check_target_on_mortar_fo_axis(mortar_coords, fo_coords, target_coords, lane
     
     return distance_from_line < (lane_width / 2)
 
-def check_danger_close(fo_coords, target_coords, dispersion):
+def check_danger_close(fo_coords, target_coords, dispersion, danger_close_distance=100):
     """
     Checks if the target's dispersion radius is dangerously close to the FO.
     Returns True if danger close, False otherwise.
     """
     distance_sq = (target_coords[0] - fo_coords[0])**2 + (target_coords[1] - fo_coords[1])**2
-    return distance_sq <= (dispersion + 100)**2
+    return distance_sq <= (dispersion + danger_close_distance)**2
 
 def calculate_new_fo_data(fo_coords, target_coords):
     """

@@ -30,6 +30,16 @@ class MapView(ttk.Frame):
         mortar_color, fo_color, target_color = "blue", "yellow", "red"
         self.graph_canvas.config(bg=bg_color)
 
+        if self.app.theme_manager.theme_config.get("use_logo_as_background"):
+            logo_path = self.app.theme_manager.theme_config.get("logo_path")
+            if logo_path and os.path.exists(logo_path):
+                try:
+                    logo_image = Image.open(logo_path)
+                    self.logo_photo = ImageTk.PhotoImage(logo_image)
+                    self.graph_canvas.create_image(0, 0, anchor="nw", image=self.logo_photo)
+                except Exception as e:
+                    print(f"Error loading logo image: {e}")
+
         canvas_width = self.graph_canvas.winfo_width()
         canvas_height = self.graph_canvas.winfo_height()
         min_e, min_n, max_e, max_n = self.app.map_view

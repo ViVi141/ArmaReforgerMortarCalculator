@@ -1,20 +1,13 @@
-### Release Notes - v1.1.5
-
-This release introduces a powerful new map management system and a major internal code refactoring for improved stability and maintainability.
-
-#### ✨ New Features
-
-*   **Advanced Map Management:**
-    *   **Map Selection:** A new dropdown in the settings panel allows you to switch between preloaded and custom-uploaded maps.
-    *   **Custom Map Dimensions:** The calculator now supports rectangular maps. You can set custom X and Y dimensions for each map.
-    *   **Persistent Custom Maps:** Uploaded maps and their dimensions are now saved and will be automatically available the next time you launch the application.
-    *   **Preloaded Maps:** The application now comes preloaded with configurations for Zarichne, Serhiivka, Everon, and Belleau Wood.
-
-#### 🎨 UI Changes
-
-*   The map settings panel has been redesigned for the new map management system.
-*   The map selection dropdown menu is now correctly styled to match the application's theme.
+### Release Notes - v1.2.1
 
 #### 🐛 Bug Fixes
+*   Fixed a critical issue that prevented the application from launching on some systems due to a "Failed to load Python DLL" error.
+*   The application now correctly displays its custom icon in File Explorer and the taskbar.
 
-*   Fixed a bug where the hidden "Admin Mode" button was not completely invisible in dark mode.
+---
+
+
+#### 📝 A Note on Transparency
+We believe in being transparent with our users. As you explore the code, you may find certain features or UI elements that are commented out. This is a deliberate decision to keep some functionality private for the time being, while still acknowledging its existence. We are committed to providing a powerful and user-friendly tool, and this approach allows us to focus on delivering a stable and polished experience.
+
+Milsim administrators interested in private 'admin' page of this tool can contact me on Discord at @ArcticFr33d0m. tbf the password is not hard to find and its not hiding anything application breaking. Its just to ensure integrity within your milsim.

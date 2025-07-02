@@ -28,7 +28,8 @@ class ConfigManager:
                 self.maps_config = json.load(f)
         else:
             self.maps_config = {
-                "Zarichne.png": { "x_max": 4607, "y_max": 4607 }
+                "Zarichne.png": { "x_max": 4607, "y_max": 4607 },
+                "danger_close_distance": 100
             }
             self.save_config()
 
@@ -41,6 +42,13 @@ class ConfigManager:
     def save_config(self):
         with open(self.config_path, 'w') as f:
             json.dump(self.maps_config, f, indent=4)
+
+    def get_danger_close_distance(self):
+        return self.maps_config.get("danger_close_distance", 100)
+
+    def set_danger_close_distance(self, distance):
+        self.maps_config["danger_close_distance"] = distance
+        self.save_config()
 
     def add_new_map(self, file_path, x_max, y_max):
         map_filename = os.path.basename(file_path)

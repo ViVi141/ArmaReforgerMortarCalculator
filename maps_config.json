@@ -14,5 +14,6 @@
     "BelleauWood.png": {
         "x_max": 12030,
         "y_max": 12030
-    }
+    },
+    "danger_close_distance": 100
 }

@@ -29,8 +29,29 @@ class SettingsView(ttk.Frame):
         # Theme
         theme_frame = ttk.LabelFrame(self, text="Theme")
         theme_frame.pack(fill="x", expand=True, pady=5)
+        
         self.theme_button = ttk.Button(theme_frame, text="Toggle Dark Mode", command=self.app.toggle_theme)
-        self.theme_button.pack(pady=10)
+        self.theme_button.pack(pady=5)
+
+        # custom_theme_frame = ttk.LabelFrame(theme_frame, text="Customization")
+        # custom_theme_frame.pack(fill="x", expand=True, pady=5, padx=5)
+
+        # ttk.Label(custom_theme_frame, text="App Title:").grid(row=0, column=0, padx=5, pady=2, sticky="w")
+        # self.title_entry = ttk.Entry(custom_theme_frame, width=30)
+        # self.title_entry.grid(row=0, column=1, padx=5, pady=2)
+        # self.title_entry.insert(0, self.app.theme_manager.theme_config.get("title", ""))
+        
+        # ttk.Button(custom_theme_frame, text="Set Title", command=self.set_title).grid(row=0, column=2, padx=5, pady=2)
+
+        # ttk.Label(custom_theme_frame, text="Logo:").grid(row=1, column=0, padx=5, pady=2, sticky="w")
+        # self.logo_path_var = tk.StringVar(value=self.app.theme_manager.theme_config.get("logo_path", ""))
+        # ttk.Entry(custom_theme_frame, textvariable=self.logo_path_var, width=30).grid(row=1, column=1, padx=5, pady=2)
+        # ttk.Button(custom_theme_frame, text="Browse...", command=self.browse_logo).grid(row=1, column=2, padx=5, pady=2)
+
+        # self.use_logo_as_bg_var = tk.BooleanVar(value=self.app.theme_manager.theme_config.get("use_logo_as_background", False))
+        # ttk.Checkbutton(custom_theme_frame, text="Use as Background", variable=self.use_logo_as_bg_var).grid(row=2, column=1, sticky="w", padx=5)
+        
+        # ttk.Button(custom_theme_frame, text="Set Logo", command=self.set_logo).grid(row=3, column=1, pady=5)
 
         # Warnings
         warnings_frame = ttk.LabelFrame(self, text="Warnings")
@@ -44,6 +65,16 @@ class SettingsView(ttk.Frame):
         self.admin_frame = ttk.LabelFrame(self, text="Admin")
         self.admin_status_label = ttk.Label(self.admin_frame, text="Admin Mode Enabled")
         self.admin_status_label.pack(pady=5)
+
+        danger_close_frame = ttk.Frame(self.admin_frame)
+        danger_close_frame.pack(pady=5)
+        
+        ttk.Label(danger_close_frame, text="Danger Close (m):").pack(side="left", padx=5)
+        self.danger_close_entry = ttk.Entry(danger_close_frame, width=10)
+        self.danger_close_entry.pack(side="left", padx=5)
+        self.danger_close_entry.insert(0, self.app.config_manager.get_danger_close_distance())
+        
+        ttk.Button(danger_close_frame, text="Set", command=self.set_danger_close).pack(side="left", padx=5)
 
         # Transparent 1x1 pixel GIF
         self.transparent_img = PhotoImage(data='R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7')
@@ -91,6 +122,27 @@ class SettingsView(ttk.Frame):
             self.app.admin_mode_enabled.set(False)
             self.admin_frame.pack_forget()
 
+    def set_danger_close(self):
+        try:
+            distance = int(self.danger_close_entry.get())
+            self.app.config_manager.set_danger_close_distance(distance)
+        except ValueError:
+            messagebox.showerror("Error", "Invalid distance. Please enter a number.")
+
     def refresh_map_list(self):
         map_files = self.app.config_manager.get_map_list()
         self.map_selection_combo['values'] = map_files
+
+    # def set_title(self):
+    #     new_title = self.title_entry.get()
+    #     self.app.theme_manager.set_title(new_title)
+
+    # def browse_logo(self):
+    #     file_path = filedialog.askopenfilename(filetypes=[("Image Files", "*.png;*.jpg;*.jpeg")])
+    #     if file_path:
+    #         self.logo_path_var.set(file_path)
+
+    # def set_logo(self):
+    #     logo_path = self.logo_path_var.get()
+    #     use_as_bg = self.use_logo_as_bg_var.get()
+    #     self.app.theme_manager.set_logo(logo_path, use_as_bg)

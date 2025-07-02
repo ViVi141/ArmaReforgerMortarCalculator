@@ -35,7 +35,7 @@ class MissionLog:
         tree_frame = ttk.Frame(log_frame)
         tree_frame.pack(pady=5, fill="both", expand=True)
 
-        columns = ("name", "target_grid", "ammo", "azimuth", "dist")
+        columns = ("name", "target_grid", "ammo", "azimuth", "dist", "mortar_callsign", "fo_id")
         self.log_tree = ttk.Treeview(tree_frame, columns=columns, show="headings")
 
         self.log_tree.heading("name", text="Target Name")
@@ -43,9 +43,16 @@ class MissionLog:
         self.log_tree.heading("ammo", text="Ammo")
         self.log_tree.heading("azimuth", text="Azimuth (MIL)")
         self.log_tree.heading("dist", text="Distance (m)")
-        
-        for col in columns:
-            self.log_tree.column(col, width=150)
+        self.log_tree.heading("mortar_callsign", text="Mortar Callsign")
+        self.log_tree.heading("fo_id", text="FO ID")
+
+        self.log_tree.column("name", width=120)
+        self.log_tree.column("target_grid", width=100)
+        self.log_tree.column("ammo", width=80)
+        self.log_tree.column("azimuth", width=100)
+        self.log_tree.column("dist", width=100)
+        self.log_tree.column("mortar_callsign", width=120)
+        self.log_tree.column("fo_id", width=120)
 
         self.log_tree.pack(side="left", fill="both", expand=True)
         scrollbar = ttk.Scrollbar(tree_frame, orient="vertical", command=self.log_tree.yview)
@@ -103,6 +110,8 @@ class MissionLog:
                 mission.get("calculated_target_grid", ""),
                 mission.get("ammo", ""),
                 mission.get("mortar_to_target_azimuth", ""),
-                mission.get("mortar_to_target_dist", "")
+                mission.get("mortar_to_target_dist", ""),
+                mission.get("mortar_callsign", ""),
+                mission.get("fo_id", "")
             )
             self.log_tree.insert("", "end", values=display_values)
