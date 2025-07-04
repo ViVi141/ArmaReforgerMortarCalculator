@@ -777,21 +777,25 @@ class MortarCalculatorApp(tk.Tk):
         # self.calculate_all() # Removed to prevent auto-calculation on selection
         pass
 
-    def save_mission(self):
-        mission_data = self.get_current_mission_data_for_log()
-        file_path = filedialog.asksaveasfilename(defaultextension=".json", filetypes=[("JSON Files", "*.json"), ("All Files", "*.*")], title="Save Mission File")
+    def save_log_as(self):
+        file_path = filedialog.asksaveasfilename(defaultextension=".json", filetypes=[("JSON Files", "*.json"), ("All Files", "*.*")], title="Save Fire Mission Log As...")
         if file_path:
             with open(file_path, 'w') as f:
-                json.dump(mission_data, f, indent=4)
-            messagebox.showinfo("Save Mission", "Mission saved successfully.")
+                json.dump(self.mission_log.log_data, f, indent=4)
+            messagebox.showinfo("Save Log", "Fire mission log saved successfully.")
 
-    def load_mission(self):
-        file_path = filedialog.askopenfilename(filetypes=[("JSON Files", "*.json"), ("All Files", "*.*")], title="Load Mission File")
+    def load_log_from_file(self):
+        file_path = filedialog.askopenfilename(filetypes=[("JSON Files", "*.json"), ("All Files", "*.*")], title="Load Fire Mission Log")
         if file_path:
-            with open(file_path, 'r') as f:
-                mission_data = json.load(f)
-            self.load_mission_data_from_log(mission_data)
-            messagebox.showinfo("Load Mission", "Mission loaded successfully.")
+            try:
+                with open(file_path, 'r') as f:
+                    self.mission_log.log_data = json.load(f)
+                self.mission_log.update_log_tree()
+                messagebox.showinfo("Load Log", "Fire mission log loaded successfully.")
+            except (json.JSONDecodeError, TypeError) as e:
+                messagebox.showerror("Load Error", f"Failed to load log file: {e}\n\nThe file may be corrupt or in an unsupported format.")
+            except Exception as e:
+                messagebox.showerror("Load Error", f"An unexpected error occurred while loading the log file: {e}")
 
     def new_mission(self):
         """Clears all input fields for a new mission."""

@@ -198,7 +198,7 @@ class MapView(ttk.Frame):
             text_color = "black"
             placeholder_x = 50
             mortar_y, fo_y, target_y = canvas_height - 80, canvas_height - 50, canvas_height - 20
-            self.graph_canvas.create_oval(placeholder_x - 5, mortar_y - 5, placeholder_x + 5, mortar_y + 5, fill=mortar_color, outline="black")
+            self.graph_canvas.create_oval(placeholder_x - 5, mortar_y - 5, placeholder_x + 5, mortar_y + 5, fill=mortar_colors[0], outline="black")
             self.graph_canvas.create_text(placeholder_x + 25, mortar_y, text="Mortar", fill=text_color, anchor="w")
             self.graph_canvas.create_oval(placeholder_x - 5, fo_y - 5, placeholder_x + 5, fo_y + 5, fill=fo_color, outline="black")
             self.graph_canvas.create_text(placeholder_x + 25, fo_y, text="FO", fill=text_color, anchor="w")

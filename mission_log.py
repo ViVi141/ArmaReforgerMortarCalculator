@@ -28,8 +28,8 @@ class MissionLog:
         ttk.Button(action_frame, text="Delete Selected Mission", command=self.delete_selected_mission).pack(side="left", padx=5)
         
         # Add Save and Load buttons to the right
-        ttk.Button(action_frame, text="Save Mission File", command=self.app.save_mission).pack(side="right", padx=5)
-        ttk.Button(action_frame, text="Load Mission File", command=self.app.load_mission).pack(side="right", padx=5)
+        ttk.Button(action_frame, text="Save Log As...", command=self.app.save_log_as).pack(side="right", padx=5)
+        ttk.Button(action_frame, text="Load Log File", command=self.app.load_log_from_file).pack(side="right", padx=5)
 
         # --- Log Display Frame ---
         tree_frame = ttk.Frame(log_frame)
