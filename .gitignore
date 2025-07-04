@@ -13,7 +13,7 @@ venv/
 build/
 dist/
 *.spec
-IMPROVEMENT_PLAN.md
+PROJECT_PLAN.md
 updates.txt
 
 # Temporary build scripts

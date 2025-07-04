@@ -1,6 +1,7 @@
 import tkinter as tk
 from tkinter import ttk
 from PIL import Image, ImageTk
+import math
 
 class MapView(ttk.Frame):
     def __init__(self, parent, app):
@@ -23,11 +24,16 @@ class MapView(ttk.Frame):
         ttk.Button(zoom_button_frame, text="+", width=2, command=self.zoom_in).pack()
         ttk.Button(zoom_button_frame, text="-", width=2, command=self.zoom_out).pack()
 
+        self.show_saved_target_var = tk.BooleanVar(value=False)
+        show_saved_target_check = ttk.Checkbutton(self, text="Show Saved Target", variable=self.show_saved_target_var, command=self.plot_positions)
+        show_saved_target_check.place(relx=0.02, rely=0.02, anchor="nw")
+
     def plot_positions(self):
         self.graph_canvas.delete("all")
         
         bg_color = "#252526" if self.app.is_dark_mode else "white"
-        mortar_color, fo_color, target_color = "blue", "yellow", "red"
+        mortar_colors = ["blue", "green", "purple", "orange"]
+        fo_color, target_color = "yellow", "red"
         self.graph_canvas.config(bg=bg_color)
 
         if self.app.theme_manager.theme_config.get("use_logo_as_background"):
@@ -78,23 +84,112 @@ class MapView(ttk.Frame):
             offset_y = (canvas_height - render_height) // 2
             x = offset_x + ((e - min_e) * scale)
             y = offset_y + ((max_n - n) * scale)
-            return x, y
+            return x, y, scale
 
-        if self.app.last_coords:
-            mortar_x, mortar_y = transform(self.app.last_coords['mortar_e'], self.app.last_coords['mortar_n'])
-            fo_x, fo_y = transform(self.app.last_coords['fo_e'], self.app.last_coords['fo_n'])
-            target_x, target_y = transform(self.app.last_coords['target_e'], self.app.last_coords['target_n'])
+        if self.app.last_solutions:
+            solutions = self.app.last_solutions
+            num_mortars = len(solutions)
             
-            self.graph_canvas.create_oval(mortar_x-5, mortar_y-5, mortar_x+5, mortar_y+5, fill=mortar_color, outline="black")
-            self.graph_canvas.create_text(mortar_x, mortar_y - 15, text="Mortar", fill="black")
+            for i in range(num_mortars):
+                mortar_e, mortar_n = solutions[i]['mortar_coords']
+                mortar_x, mortar_y, _ = transform(mortar_e, mortar_n)
+                self.graph_canvas.create_oval(mortar_x-5, mortar_y-5, mortar_x+5, mortar_y+5, fill=mortar_colors[i], outline="black")
+                self.graph_canvas.create_text(mortar_x, mortar_y - 15, text=f"Gun {i+1}", fill="black")
+
+            fo_x, fo_y, _ = transform(solutions[0]['fo_coords'][0], solutions[0]['fo_coords'][1])
+            
             if not (self.app.admin_mode_enabled.get() and self.app.admin_target_pin):
                 self.graph_canvas.create_oval(fo_x-5, fo_y-5, fo_x+5, fo_y+5, fill=fo_color, outline="black")
                 self.graph_canvas.create_text(fo_x, fo_y - 15, text="FO", fill="black")
-            self.graph_canvas.create_polygon(target_x, target_y-7, target_x-7, target_y+7, target_x+7, target_y+7, fill=target_color, outline="black")
-            self.graph_canvas.create_text(target_x, target_y + 15, text="Target", fill="black")
+
+            mission_type = self.app.fire_mission_type_var.get()
+            
+            if mission_type == "Regular":
+                # For regular missions, all guns fire at the same single target.
+                target_e, target_n = solutions[0]['target_coords']
+                target_x, target_y, scale = transform(target_e, target_n)
+
+                # Use the overall min and max dispersion for the circles
+                min_disp_radius = min(sol['least_tof']['dispersion'] for sol in solutions)
+                max_disp_radius = max(sol['most_tof']['dispersion'] for sol in solutions)
+
+                scaled_min_disp = min_disp_radius * scale
+                scaled_max_disp = max_disp_radius * scale
+
+                # Draw the circles first, ensuring the yellow is only drawn if it's larger.
+                if scaled_max_disp > scaled_min_disp:
+                    self.graph_canvas.create_oval(target_x - scaled_max_disp, target_y - scaled_max_disp, target_x + scaled_max_disp, target_y + scaled_max_disp, outline="yellow", width=2)
+                
+                if scaled_min_disp > 0:
+                    self.graph_canvas.create_oval(target_x - scaled_min_disp, target_y - scaled_min_disp, target_x + scaled_min_disp, target_y + scaled_min_disp, outline="red", width=2)
+
+                # Draw a single target pin on top
+                target_label = self.app.loaded_target_name.get() or "Target"
+                self.graph_canvas.create_polygon(target_x, target_y-7, target_x-7, target_y+7, target_x+7, target_y+7, fill=target_color, outline="black")
+                self.graph_canvas.create_text(target_x, target_y + 15, text=target_label, fill="black")
+
+                # Draw Legend
+                legend_x = canvas_width - 150
+                legend_y = canvas_height - 50
+                self.graph_canvas.create_rectangle(legend_x, legend_y, legend_x + 20, legend_y + 20, fill="red", outline="black")
+                self.graph_canvas.create_text(legend_x + 30, legend_y + 10, text="Kill Area", anchor="w", fill="black")
+                self.graph_canvas.create_rectangle(legend_x, legend_y + 25, legend_x + 20, legend_y + 45, fill="yellow", outline="black")
+                self.graph_canvas.create_text(legend_x + 30, legend_y + 35, text="Expected Injury Area", anchor="w", fill="black")
+
+
+            elif mission_type in ["Small Barrage", "Large Barrage"]:
+                sol = solutions[0]
+                target_e, target_n = sol['target_coords']
+                target_x, target_y, scale = transform(target_e, target_n)
+                self.graph_canvas.create_polygon(target_x, target_y-7, target_x-7, target_y+7, target_x+7, target_y+7, fill=target_color, outline="black")
+                self.graph_canvas.create_text(target_x, target_y + 15, text="Target", fill="black")
+                
+                disp = sol['least_tof']['dispersion'] * scale
+                self.graph_canvas.create_oval(target_x - disp, target_y - disp, target_x + disp, target_y + disp, outline="red", width=2)
+
+            elif mission_type == "Creeping Barrage":
+                first_target = solutions[0]['target_coords']
+                last_target = solutions[-1]['target_coords']
+                dispersion = solutions[0]['least_tof']['dispersion']
+                
+                # Draw individual targets
+                for i, sol in enumerate(solutions):
+                    target_e, target_n = sol['target_coords']
+                    target_x, target_y, _ = transform(target_e, target_n)
+                    self.graph_canvas.create_polygon(target_x, target_y-7, target_x-7, target_y+7, target_x+7, target_y+7, fill=target_color, outline="black")
+                    self.graph_canvas.create_text(target_x, target_y + 15, text=f"Target {i+1}", fill="black")
+
+                # Draw bounding box
+                creep_vec_e = last_target[0] - first_target[0]
+                creep_vec_n = last_target[1] - first_target[1]
+                
+                if creep_vec_e == 0 and creep_vec_n == 0: # Handle case with one target
+                    creep_angle_rad = 0
+                else:
+                    creep_angle_rad = math.atan2(creep_vec_e, creep_vec_n)
+
+                perp_angle_rad = creep_angle_rad + math.pi / 2
+                
+                radius_scaled = dispersion * scale
+
+                start_e = first_target[0] - dispersion * math.sin(creep_angle_rad)
+                start_n = first_target[1] - dispersion * math.cos(creep_angle_rad)
+                end_e = last_target[0] + dispersion * math.sin(creep_angle_rad)
+                end_n = last_target[1] + dispersion * math.cos(creep_angle_rad)
+
+                p1_x, p1_y, _ = transform(start_e - dispersion * math.sin(perp_angle_rad), start_n - dispersion * math.cos(perp_angle_rad))
+                p2_x, p2_y, _ = transform(start_e + dispersion * math.sin(perp_angle_rad), start_n + dispersion * math.cos(perp_angle_rad))
+                p3_x, p3_y, _ = transform(end_e + dispersion * math.sin(perp_angle_rad), end_n + dispersion * math.cos(perp_angle_rad))
+                p4_x, p4_y, _ = transform(end_e - dispersion * math.sin(perp_angle_rad), end_n - dispersion * math.cos(perp_angle_rad))
+                
+                self.graph_canvas.create_polygon(p1_x, p1_y, p2_x, p2_y, p3_x, p3_y, p4_x, p4_y, outline="red", fill="", width=2)
+        elif self.show_saved_target_var.get() and self.app.last_coords and 'target_e' in self.app.last_coords and not self.app.last_solutions:
+            target_x, target_y, _ = transform(self.app.last_coords['target_e'], self.app.last_coords['target_n'])
+            self.graph_canvas.create_polygon(target_x, target_y-7, target_x-7, target_y+7, target_x+7, target_y+7, fill="purple", outline="black")
+            self.graph_canvas.create_text(target_x, target_y + 15, text=self.app.loaded_target_name.get(), fill="black")
         elif self.app.admin_mode_enabled.get() and self.app.admin_target_pin:
             target_e, target_n = self.app.admin_target_pin
-            target_x, target_y = transform(target_e, target_n)
+            target_x, target_y, _ = transform(target_e, target_n)
             self.graph_canvas.create_polygon(target_x, target_y-7, target_x-7, target_y+7, target_x+7, target_y+7, fill=target_color, outline="black")
             self.graph_canvas.create_text(target_x, target_y + 15, text="Target", fill="black")
         elif self.app.map_image:

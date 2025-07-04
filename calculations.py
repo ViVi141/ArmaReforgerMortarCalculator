@@ -157,3 +157,138 @@ def calculate_new_fo_data(fo_coords, target_coords):
         new_azimuth_deg += 360
 
     return new_azimuth_deg, new_dist
+
+def calculate_regular_mission(mortars, target_coords, ammo):
+    """Calculates a regular fire mission for one or more mortars."""
+    solutions = []
+    for mortar in mortars:
+        mortar_e, mortar_n = mortar['coords']
+        target_e, target_n, target_elev = target_coords
+        elev_diff = target_elev - mortar['elev']
+        
+        dist = math.sqrt((target_e - mortar_e)**2 + (target_n - mortar_n)**2)
+        
+        valid_solutions = find_valid_solutions(ammo, dist, elev_diff)
+        if not valid_solutions:
+            raise ValueError(f"No valid solution for {mortar.get('callsign', 'gun')}")
+            
+        valid_solutions.sort(key=lambda x: x['tof'])
+        
+        least_tof_solution = valid_solutions[0]
+        # Find a most_tof solution that is distinct from the least_tof one
+        most_tof_solution = next((s for s in reversed(valid_solutions) if s['charge'] != least_tof_solution['charge']), least_tof_solution)
+
+        solutions.append({
+            "mortar": mortar,
+            "target_coords": target_coords,
+            "least_tof": least_tof_solution,
+            "most_tof": most_tof_solution
+        })
+    return solutions
+
+def calculate_small_barrage(mortars, target_coords, ammo):
+    """Calculates a small barrage, prioritizing the round with the least dispersion."""
+    solutions = []
+    for mortar in mortars:
+        mortar_e, mortar_n = mortar['coords']
+        target_e, target_n, target_elev = target_coords
+        dist = math.sqrt((target_e - mortar_e)**2 + (target_n - mortar_n)**2)
+        elev_diff = target_elev - mortar['elev']
+        
+        valid_solutions = find_valid_solutions(ammo, dist, elev_diff)
+        if not valid_solutions:
+            raise ValueError(f"No valid solution for {mortar['callsign']}")
+            
+        valid_solutions.sort(key=lambda x: x['dispersion'])
+        best_solution = valid_solutions[0]
+        
+        solutions.append({
+            "mortar": mortar,
+            "target_coords": target_coords,
+            "least_tof": best_solution,
+            "most_tof": best_solution
+        })
+    return solutions
+
+def calculate_large_barrage(mortars, target_coords, ammo):
+    """Calculates a large barrage, prioritizing the round with the most dispersion."""
+    solutions = []
+    for mortar in mortars:
+        mortar_e, mortar_n = mortar['coords']
+        target_e, target_n, target_elev = target_coords
+        dist = math.sqrt((target_e - mortar_e)**2 + (target_n - mortar_n)**2)
+        elev_diff = target_elev - mortar['elev']
+        
+        valid_solutions = find_valid_solutions(ammo, dist, elev_diff)
+        if not valid_solutions:
+            raise ValueError(f"No valid solution for {mortar['callsign']}")
+            
+        valid_solutions.sort(key=lambda x: x['dispersion'], reverse=True)
+        best_solution = valid_solutions[0]
+        
+        solutions.append({
+            "mortar": mortar,
+            "target_coords": target_coords,
+            "least_tof": best_solution,
+            "most_tof": best_solution
+        })
+    return solutions
+
+def calculate_creeping_barrage(mortars, initial_target, creep_direction, ammo):
+    """Calculates a creeping barrage."""
+    if len(mortars) < 3:
+        raise ValueError("Creeping barrage requires at least 3 mortars.")
+    
+    solutions = []
+    
+    # Find the best round (least dispersion)
+    best_charge = None
+    min_dispersion = float('inf')
+    
+    # Use the first mortar to determine the best charge
+    mortar_e, mortar_n = mortars[0]['coords']
+    target_e, target_n, target_elev = initial_target
+    dist = math.sqrt((target_e - mortar_e)**2 + (target_n - mortar_n)**2)
+    elev_diff = target_elev - mortars[0]['elev']
+    
+    possible_solutions = find_valid_solutions(ammo, dist, elev_diff)
+    if not possible_solutions:
+        raise ValueError("No valid charges for creeping barrage.")
+        
+    for sol in possible_solutions:
+        if sol['dispersion'] < min_dispersion:
+            min_dispersion = sol['dispersion']
+            best_charge = sol['charge']
+
+    creep_rad = math.radians(creep_direction)
+    
+    for i, mortar in enumerate(mortars):
+        offset_dist = i * min_dispersion
+        
+        new_target_e = initial_target[0] + offset_dist * math.sin(creep_rad)
+        new_target_n = initial_target[1] + offset_dist * math.cos(creep_rad)
+        new_target_coords = (new_target_e, new_target_n, initial_target[2])
+        
+        mortar_e, mortar_n = mortar['coords']
+        dist = math.sqrt((new_target_e - mortar_e)**2 + (new_target_n - mortar_n)**2)
+        elev_diff = new_target_coords[2] - mortar['elev']
+        
+        valid_solutions = find_valid_solutions(ammo, dist, elev_diff)
+        
+        final_solution = None
+        for sol in valid_solutions:
+            if sol['charge'] == best_charge:
+                final_solution = sol
+                break
+        
+        if not final_solution:
+            raise ValueError(f"Could not find solution with charge {best_charge} for {mortar['callsign']}")
+            
+        solutions.append({
+            "mortar": mortar,
+            "target_coords": new_target_coords,
+            "least_tof": final_solution,
+            "most_tof": final_solution
+        })
+        
+    return solutions
