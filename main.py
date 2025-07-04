@@ -73,13 +73,6 @@ class MortarCalculatorApp(tk.Tk):
 
         # Core Application State
         self.is_dark_mode = False
-        self.map_image = None
-        self.map_photo = None
-        self.map_view = [0, 0, 4607, 4607]
-        self.pan_start_x, self.pan_start_y = 0, 0
-        self.last_coords = {}
-        self.last_solutions = []
-        self.admin_target_pin = None
         
         self.state = StateManager()
         self.mortar_input_widgets = []
@@ -776,6 +769,7 @@ class MortarCalculatorApp(tk.Tk):
     def new_mission(self):
         if messagebox.askyesno("New Mission", "This will clear all current mission data. Are you sure?"):
             self.state.reset_inputs()
+            self.update_mortar_inputs()
             self.clear_solution()
             self.mission_log.clear_log()
             self.state.last_coords = {}
@@ -818,8 +812,11 @@ class MortarCalculatorApp(tk.Tk):
             self.map_view_widget.plot_positions()
             return
 
+        map_path = "" # Define here to be available in except block
         try:
-            map_path = os.path.join("maps", map_name)
+            # Use the config_manager to get the correct base directory for maps
+            map_path = os.path.join(self.config_manager.maps_dir, map_name)
+            
             if os.path.exists(map_path):
                 self.state.map_image = Image.open(map_path)
                 map_x_max = self.state.map_x_max_var.get()
@@ -827,9 +824,10 @@ class MortarCalculatorApp(tk.Tk):
                 self.state.map_view = [0, 0, map_x_max, map_y_max]
             else:
                 self.state.map_image = None
+                messagebox.showerror("Map Error", f"Map file not found.\n\nPyInstaller check: The application expected to find the map at the following path, but it does not exist:\n\n{map_path}")
         except Exception as e:
-            print(f"Error loading map image: {e}")
             self.state.map_image = None
+            messagebox.showerror("Map Loading Error", f"An error occurred while loading the map image:\n\n{e}\n\nAttempted path:\n{map_path}")
         
         self.map_view_widget.plot_positions()
 

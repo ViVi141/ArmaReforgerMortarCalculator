@@ -17,7 +17,6 @@ PROJECT_PLAN.md
 updates.txt
 
 # Temporary build scripts
-build.bat
 clear_icon_cache.bat
 create_icon.py
 
