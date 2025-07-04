@@ -25,7 +25,7 @@ class MapView(ttk.Frame):
         ttk.Button(zoom_button_frame, text="-", width=2, command=self.zoom_out).pack()
 
         self.show_saved_target_var = tk.BooleanVar(value=False)
-        show_saved_target_check = ttk.Checkbutton(self, text="Show Saved Target", variable=self.show_saved_target_var, command=self.plot_positions)
+        show_saved_target_check = ttk.Checkbutton(self, text="Show Logged Targets", variable=self.show_saved_target_var, command=self.plot_positions)
         show_saved_target_check.place(relx=0.02, rely=0.02, anchor="nw")
 
     def plot_positions(self):
@@ -48,14 +48,14 @@ class MapView(ttk.Frame):
 
         canvas_width = self.graph_canvas.winfo_width()
         canvas_height = self.graph_canvas.winfo_height()
-        min_e, min_n, max_e, max_n = self.app.map_view
+        min_e, min_n, max_e, max_n = self.app.state.map_view
         view_width = max_e - min_e
         view_height = max_n - min_n
 
-        if self.app.map_image and view_width > 0 and view_height > 0:
-            map_scale_x = self.app.map_x_max_var.get()
-            map_scale_y = self.app.map_y_max_var.get()
-            img_width, img_height = self.app.map_image.size
+        if self.app.state.map_image and view_width > 0 and view_height > 0:
+            map_scale_x = self.app.state.map_x_max_var.get()
+            map_scale_y = self.app.state.map_y_max_var.get()
+            img_width, img_height = self.app.state.map_image.size
 
             if map_scale_x <= 0 or map_scale_y <= 0: return
 
@@ -71,10 +71,10 @@ class MapView(ttk.Frame):
             crop_max_y = ((map_scale_y - min_n) / map_scale_y) * img_height
 
             if crop_max_x > crop_min_x and crop_max_y > crop_min_y:
-                cropped_img = self.app.map_image.crop((crop_min_x, crop_min_y, crop_max_x, crop_max_y))
+                cropped_img = self.app.state.map_image.crop((crop_min_x, crop_min_y, crop_max_x, crop_max_y))
                 resized_image = cropped_img.resize((render_width, render_height), Image.LANCZOS)
-                self.app.map_photo = ImageTk.PhotoImage(resized_image)
-                self.graph_canvas.create_image(offset_x, offset_y, anchor="nw", image=self.app.map_photo)
+                self.app.state.map_photo = ImageTk.PhotoImage(resized_image)
+                self.graph_canvas.create_image(offset_x, offset_y, anchor="nw", image=self.app.state.map_photo)
 
         def transform(e, n):
             scale = min(canvas_width / view_width, canvas_height / view_height)
@@ -86,8 +86,8 @@ class MapView(ttk.Frame):
             y = offset_y + ((max_n - n) * scale)
             return x, y, scale
 
-        if self.app.last_solutions:
-            solutions = self.app.last_solutions
+        if self.app.state.last_solutions:
+            solutions = self.app.state.last_solutions
             num_mortars = len(solutions)
             
             for i in range(num_mortars):
@@ -98,11 +98,11 @@ class MapView(ttk.Frame):
 
             fo_x, fo_y, _ = transform(solutions[0]['fo_coords'][0], solutions[0]['fo_coords'][1])
             
-            if not (self.app.admin_mode_enabled.get() and self.app.admin_target_pin):
+            if not (self.app.state.admin_mode_enabled.get() and self.app.state.admin_target_pin):
                 self.graph_canvas.create_oval(fo_x-5, fo_y-5, fo_x+5, fo_y+5, fill=fo_color, outline="black")
                 self.graph_canvas.create_text(fo_x, fo_y - 15, text="FO", fill="black")
 
-            mission_type = self.app.fire_mission_type_var.get()
+            mission_type = self.app.state.fire_mission_type_var.get()
             
             if mission_type == "Regular":
                 # For regular missions, all guns fire at the same single target.
@@ -124,8 +124,10 @@ class MapView(ttk.Frame):
                     self.graph_canvas.create_oval(target_x - scaled_min_disp, target_y - scaled_min_disp, target_x + scaled_min_disp, target_y + scaled_min_disp, outline="red", width=2)
 
                 # Draw a single target pin on top
-                target_label = self.app.loaded_target_name.get() or "Target"
-                self.graph_canvas.create_polygon(target_x, target_y-7, target_x-7, target_y+7, target_x+7, target_y+7, fill=target_color, outline="black")
+                target_label = self.app.state.loaded_target_name.get() or "Target"
+                for i, sol in enumerate(solutions):
+                    self.graph_canvas.create_oval(target_x - 10, target_y - 10, target_x + 10, target_y + 10, outline=mortar_colors[i], width=2)
+                    self.graph_canvas.create_polygon(target_x, target_y-7, target_x-7, target_y+7, target_x+7, target_y+7, fill=mortar_colors[i], outline="black")
                 self.graph_canvas.create_text(target_x, target_y + 15, text=target_label, fill="black")
 
                 # Draw Legend
@@ -141,7 +143,9 @@ class MapView(ttk.Frame):
                 sol = solutions[0]
                 target_e, target_n = sol['target_coords']
                 target_x, target_y, scale = transform(target_e, target_n)
-                self.graph_canvas.create_polygon(target_x, target_y-7, target_x-7, target_y+7, target_x+7, target_y+7, fill=target_color, outline="black")
+                for i, sol_i in enumerate(solutions):
+                    self.graph_canvas.create_oval(target_x - 10, target_y - 10, target_x + 10, target_y + 10, outline=mortar_colors[i], width=2)
+                    self.graph_canvas.create_polygon(target_x, target_y-7, target_x-7, target_y+7, target_x+7, target_y+7, fill=mortar_colors[i], outline="black")
                 self.graph_canvas.create_text(target_x, target_y + 15, text="Target", fill="black")
                 
                 disp = sol['least_tof']['dispersion'] * scale
@@ -156,7 +160,8 @@ class MapView(ttk.Frame):
                 for i, sol in enumerate(solutions):
                     target_e, target_n = sol['target_coords']
                     target_x, target_y, _ = transform(target_e, target_n)
-                    self.graph_canvas.create_polygon(target_x, target_y-7, target_x-7, target_y+7, target_x+7, target_y+7, fill=target_color, outline="black")
+                    self.graph_canvas.create_oval(target_x - 10, target_y - 10, target_x + 10, target_y + 10, outline=mortar_colors[i], width=2)
+                    self.graph_canvas.create_polygon(target_x, target_y-7, target_x-7, target_y+7, target_x+7, target_y+7, fill=mortar_colors[i], outline="black")
                     self.graph_canvas.create_text(target_x, target_y + 15, text=f"Target {i+1}", fill="black")
 
                 # Draw bounding box
@@ -183,16 +188,14 @@ class MapView(ttk.Frame):
                 p4_x, p4_y, _ = transform(end_e - dispersion * math.sin(perp_angle_rad), end_n - dispersion * math.cos(perp_angle_rad))
                 
                 self.graph_canvas.create_polygon(p1_x, p1_y, p2_x, p2_y, p3_x, p3_y, p4_x, p4_y, outline="red", fill="", width=2)
-        elif self.show_saved_target_var.get() and self.app.last_coords and 'target_e' in self.app.last_coords and not self.app.last_solutions:
-            target_x, target_y, _ = transform(self.app.last_coords['target_e'], self.app.last_coords['target_n'])
-            self.graph_canvas.create_polygon(target_x, target_y-7, target_x-7, target_y+7, target_x+7, target_y+7, fill="purple", outline="black")
-            self.graph_canvas.create_text(target_x, target_y + 15, text=self.app.loaded_target_name.get(), fill="black")
-        elif self.app.admin_mode_enabled.get() and self.app.admin_target_pin:
-            target_e, target_n = self.app.admin_target_pin
+        elif self.show_saved_target_var.get():
+            self._plot_logged_targets(transform)
+        elif self.app.state.admin_mode_enabled.get() and self.app.state.admin_target_pin:
+            target_e, target_n = self.app.state.admin_target_pin
             target_x, target_y, _ = transform(target_e, target_n)
             self.graph_canvas.create_polygon(target_x, target_y-7, target_x-7, target_y+7, target_x+7, target_y+7, fill=target_color, outline="black")
             self.graph_canvas.create_text(target_x, target_y + 15, text="Target", fill="black")
-        elif self.app.map_image:
+        elif self.app.state.map_image:
              pass
         else:
             text_color = "black"
@@ -205,14 +208,35 @@ class MapView(ttk.Frame):
             self.graph_canvas.create_polygon(placeholder_x, target_y - 7, placeholder_x - 7, target_y + 7, placeholder_x + 7, target_y + 7, fill=target_color, outline="black")
             self.graph_canvas.create_text(placeholder_x + 25, target_y, text="Target", fill=text_color, anchor="w")
 
+
+    def _plot_logged_targets(self, transform_func):
+        """Plots all targets from the mission log on the map."""
+        logged_targets = self.app.mission_log.logged_target_coords
+        for target in logged_targets:
+            try:
+                target_e, target_n = target["coords"]
+                target_x, target_y, _ = transform_func(target_e, target_n)
+                
+                # Draw a distinct pin for logged targets
+                self.graph_canvas.create_polygon(
+                    target_x, target_y - 9,
+                    target_x - 5, target_y,
+                    target_x, target_y + 9,
+                    target_x + 5, target_y,
+                    fill="cyan", outline="black", tags="logged_target"
+                )
+                self.graph_canvas.create_text(target_x, target_y + 18, text=target["name"], fill="black", font=("Consolas", 9, "bold"), tags="logged_target")
+            except Exception as e:
+                print(f"Could not plot logged target {target.get('name', 'Unknown')}: {e}")
+
     def zoom(self, event):
-        if not self.app.map_image:
+        if not self.app.state.map_image:
             return
 
         canvas_width = self.graph_canvas.winfo_width()
         canvas_height = self.graph_canvas.winfo_height()
         
-        min_e, min_n, max_e, max_n = self.app.map_view
+        min_e, min_n, max_e, max_n = self.app.state.map_view
         view_width = max_e - min_e
         view_height = max_n - min_n
 
@@ -237,7 +261,7 @@ class MapView(ttk.Frame):
         new_min_n = cursor_n - (1 - ((event.y - offset_y) / render_height)) * new_view_height
         new_max_n = new_min_n + new_view_height
         
-        self.app.map_view = [new_min_e, new_min_n, new_max_e, new_max_n]
+        self.app.state.map_view = [new_min_e, new_min_n, new_max_e, new_max_n]
         self.plot_positions()
 
     def zoom_in(self):
@@ -255,20 +279,20 @@ class MapView(ttk.Frame):
         self.zoom(event)
 
     def start_pan(self, event):
-        self.app.pan_start_x = event.x
-        self.app.pan_start_y = event.y
+        self.app.state.pan_start_x = event.x
+        self.app.state.pan_start_y = event.y
 
     def pan(self, event):
-        if not self.app.map_image:
+        if not self.app.state.map_image:
             return
             
-        dx = event.x - self.app.pan_start_x
-        dy = event.y - self.app.pan_start_y
+        dx = event.x - self.app.state.pan_start_x
+        dy = event.y - self.app.state.pan_start_y
 
         canvas_width = self.graph_canvas.winfo_width()
         canvas_height = self.graph_canvas.winfo_height()
         
-        min_e, min_n, max_e, max_n = self.app.map_view
+        min_e, min_n, max_e, max_n = self.app.state.map_view
         map_width = max_e - min_e
         map_height = max_n - min_n
 
@@ -277,21 +301,20 @@ class MapView(ttk.Frame):
         delta_e = dx / scale
         delta_n = dy / scale
 
-        self.app.map_view = [min_e - delta_e, min_n + delta_n, max_e - delta_e, max_n + delta_n]
+        self.app.state.map_view = [min_e - delta_e, min_n + delta_n, max_e - delta_e, max_n + delta_n]
 
-        self.app.pan_start_x = event.x
-        self.app.pan_start_y = event.y
+        self.app.state.pan_start_x = event.x
+        self.app.state.pan_start_y = event.y
         
         self.plot_positions()
 
     def auto_zoom_to_pins(self):
-        if not self.app.last_coords:
+        if not self.app.state.last_coords:
             return
 
-        coords = [
-            (self.app.last_coords['mortar_e'], self.app.last_coords['mortar_n']),
-            (self.app.last_coords['fo_e'], self.app.last_coords['fo_n']),
-            (self.app.last_coords['target_e'], self.app.last_coords['target_n'])
+        coords = self.app.state.last_coords.get('mortars', []) + [
+            (self.app.state.last_coords['fo_e'], self.app.state.last_coords['fo_n']),
+            (self.app.state.last_coords['target_e'], self.app.state.last_coords['target_n'])
         ]
 
         min_e = min(c[0] for c in coords)
@@ -331,15 +354,15 @@ class MapView(ttk.Frame):
                 view_min_n -= diff / 2
                 view_max_n += diff / 2
         
-        self.app.map_view = [view_min_e, view_min_n, view_max_e, view_max_n]
+        self.app.state.map_view = [view_min_e, view_min_n, view_max_e, view_max_n]
 
     def canvas_to_map_coords(self, canvas_x, canvas_y):
-        if not self.app.map_image:
+        if not self.app.state.map_image:
             return None, None
 
         canvas_width = self.graph_canvas.winfo_width()
         canvas_height = self.graph_canvas.winfo_height()
-        min_e, min_n, max_e, max_n = self.app.map_view
+        min_e, min_n, max_e, max_n = self.app.state.map_view
         map_width = max_e - min_e
         map_height = max_n - min_n
 

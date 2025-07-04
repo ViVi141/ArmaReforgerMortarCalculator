@@ -186,8 +186,8 @@ def calculate_regular_mission(mortars, target_coords, ammo):
         })
     return solutions
 
-def calculate_small_barrage(mortars, target_coords, ammo):
-    """Calculates a small barrage, prioritizing the round with the least dispersion."""
+def _calculate_barrage(mortars, target_coords, ammo, sort_key='tof', reverse=False):
+    """Helper function to calculate barrage missions."""
     solutions = []
     for mortar in mortars:
         mortar_e, mortar_n = mortar['coords']
@@ -197,9 +197,9 @@ def calculate_small_barrage(mortars, target_coords, ammo):
         
         valid_solutions = find_valid_solutions(ammo, dist, elev_diff)
         if not valid_solutions:
-            raise ValueError(f"No valid solution for {mortar['callsign']}")
+            raise ValueError(f"No valid solution for {mortar.get('callsign', 'gun')}")
             
-        valid_solutions.sort(key=lambda x: x['dispersion'])
+        valid_solutions.sort(key=lambda x: x[sort_key], reverse=reverse)
         best_solution = valid_solutions[0]
         
         solutions.append({
@@ -210,29 +210,13 @@ def calculate_small_barrage(mortars, target_coords, ammo):
         })
     return solutions
 
+def calculate_small_barrage(mortars, target_coords, ammo):
+    """Calculates a small barrage, prioritizing the round with the shortest Time of Flight (ToF)."""
+    return _calculate_barrage(mortars, target_coords, ammo, sort_key='tof', reverse=False)
+
 def calculate_large_barrage(mortars, target_coords, ammo):
-    """Calculates a large barrage, prioritizing the round with the most dispersion."""
-    solutions = []
-    for mortar in mortars:
-        mortar_e, mortar_n = mortar['coords']
-        target_e, target_n, target_elev = target_coords
-        dist = math.sqrt((target_e - mortar_e)**2 + (target_n - mortar_n)**2)
-        elev_diff = target_elev - mortar['elev']
-        
-        valid_solutions = find_valid_solutions(ammo, dist, elev_diff)
-        if not valid_solutions:
-            raise ValueError(f"No valid solution for {mortar['callsign']}")
-            
-        valid_solutions.sort(key=lambda x: x['dispersion'], reverse=True)
-        best_solution = valid_solutions[0]
-        
-        solutions.append({
-            "mortar": mortar,
-            "target_coords": target_coords,
-            "least_tof": best_solution,
-            "most_tof": best_solution
-        })
-    return solutions
+    """Calculates a large barrage, prioritizing the round with the longest Time of Flight (ToF)."""
+    return _calculate_barrage(mortars, target_coords, ammo, sort_key='tof', reverse=True)
 
 def calculate_creeping_barrage(mortars, initial_target, creep_direction, ammo):
     """Calculates a creeping barrage."""

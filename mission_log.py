@@ -7,6 +7,7 @@ class MissionLog:
     def __init__(self, parent_frame, app):
         self.app = app
         self.log_data = []
+        self.logged_target_coords = []
         self.log_file = "fire_missions.json"
         self.create_log_widgets(parent_frame)
         self.load_log()
@@ -55,9 +56,9 @@ class MissionLog:
         self.log_tree.column("fo_id", width=120)
 
         self.log_tree.pack(side="left", fill="both", expand=True)
-        scrollbar = ttk.Scrollbar(tree_frame, orient="vertical", command=self.log_tree.yview)
-        self.log_tree.configure(yscroll=scrollbar.set)
-        scrollbar.pack(side="right", fill="y")
+        self.scrollbar = ttk.Scrollbar(tree_frame, orient="vertical", command=self.log_tree.yview)
+        self.log_tree.configure(yscroll=self.scrollbar.set)
+        self.scrollbar.pack(side="right", fill="y")
 
     def log_mission(self):
         # This will now call a method on the main app to get the required data
@@ -84,6 +85,13 @@ class MissionLog:
         self.update_log_tree()
         self.save_log()
 
+    def get_log_data(self):
+        return self.log_data
+
+    def load_log_data(self, data):
+        self.log_data = data
+        self.update_log_tree()
+
     def save_log(self):
         with open(self.log_file, "w") as f:
             json.dump(self.log_data, f, indent=4)
@@ -102,16 +110,46 @@ class MissionLog:
         self.update_log_tree()
 
     def update_log_tree(self):
-        for i in self.log_tree.get_children():
-            self.log_tree.delete(i)
+        """
+        Updates the mission log Treeview.
+        This version includes optimizations to prevent rendering artifacts during updates.
+        """
+        # Detach scrollbar to prevent visual glitches during update
+        if hasattr(self, 'scrollbar'):
+            self.log_tree.configure(yscrollcommand=None)
+
+        # More efficient way to clear the tree
+        self.log_tree.delete(*self.log_tree.get_children())
+        self.logged_target_coords.clear()
+
         for mission in self.log_data:
+            target_name = mission.get("target_name", "")
+            grid_str = mission.get("calculated_target_grid", "")
+            
+            # Attempt to parse the grid to store coordinates for map plotting
+            try:
+                from calculations import parse_grid # Local import to avoid circular dependency
+                easting, northing = parse_grid(grid_str)
+                self.logged_target_coords.append({"name": target_name, "coords": (easting, northing)})
+            except (ValueError, TypeError):
+                pass # Ignore missions with invalid grids
+
+            # Correctly extract the callsign from the nested data structure
+            mortars = mission.get("mortars", [])
+            callsign = mortars[0].get("callsign", "") if mortars else ""
+
             display_values = (
-                mission.get("target_name", ""),
-                mission.get("calculated_target_grid", ""),
+                target_name,
+                grid_str,
                 mission.get("ammo", ""),
                 mission.get("mortar_to_target_azimuth", ""),
                 mission.get("mortar_to_target_dist", ""),
-                mission.get("mortar_callsign", ""),
+                callsign,
                 mission.get("fo_id", "")
             )
             self.log_tree.insert("", "end", values=display_values)
+
+        # Re-attach scrollbar and force UI update
+        if hasattr(self, 'scrollbar'):
+            self.log_tree.configure(yscrollcommand=self.scrollbar.set)
+        self.app.update_idletasks()
