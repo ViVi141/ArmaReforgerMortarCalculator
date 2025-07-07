@@ -30,21 +30,11 @@ class MapView(ttk.Frame):
 
     def plot_positions(self):
         self.graph_canvas.delete("all")
-        
+
         bg_color = "#252526" if self.app.is_dark_mode else "white"
         mortar_colors = ["blue", "green", "purple", "orange"]
         fo_color, target_color = "yellow", "red"
         self.graph_canvas.config(bg=bg_color)
-
-        if self.app.theme_manager.theme_config.get("use_logo_as_background"):
-            logo_path = self.app.theme_manager.theme_config.get("logo_path")
-            if logo_path and os.path.exists(logo_path):
-                try:
-                    logo_image = Image.open(logo_path)
-                    self.logo_photo = ImageTk.PhotoImage(logo_image)
-                    self.graph_canvas.create_image(0, 0, anchor="nw", image=self.logo_photo)
-                except Exception as e:
-                    print(f"Error loading logo image: {e}")
 
         canvas_width = self.graph_canvas.winfo_width()
         canvas_height = self.graph_canvas.winfo_height()
@@ -52,30 +42,13 @@ class MapView(ttk.Frame):
         view_width = max_e - min_e
         view_height = max_n - min_n
 
+        # 1. Draw Map Background
         if self.app.state.map_image and view_width > 0 and view_height > 0:
-            map_scale_x = self.app.state.map_x_max_var.get()
-            map_scale_y = self.app.state.map_y_max_var.get()
-            img_width, img_height = self.app.state.map_image.size
-
-            if map_scale_x <= 0 or map_scale_y <= 0: return
-
-            scale = min(canvas_width / view_width, canvas_height / view_height)
-            render_width = int(view_width * scale)
-            render_height = int(view_height * scale)
-            offset_x = (canvas_width - render_width) // 2
-            offset_y = (canvas_height - render_height) // 2
-
-            crop_min_x = (min_e / map_scale_x) * img_width
-            crop_max_x = (max_e / map_scale_x) * img_width
-            crop_min_y = ((map_scale_y - max_n) / map_scale_y) * img_height
-            crop_max_y = ((map_scale_y - min_n) / map_scale_y) * img_height
-
-            if crop_max_x > crop_min_x and crop_max_y > crop_min_y:
-                cropped_img = self.app.state.map_image.crop((crop_min_x, crop_min_y, crop_max_x, crop_max_y))
-                resized_image = cropped_img.resize((render_width, render_height), Image.LANCZOS)
-                self.app.state.map_photo = ImageTk.PhotoImage(resized_image)
-                self.graph_canvas.create_image(offset_x, offset_y, anchor="nw", image=self.app.state.map_photo)
-
+            self._draw_map_image(canvas_width, canvas_height, view_width, view_height)
+        elif self.app.theme_manager.theme_config.get("use_logo_as_background"):
+            self._draw_logo_background()
+        
+        # 2. Define Coordinate Transformation Function
         def transform(e, n):
             scale = min(canvas_width / view_width, canvas_height / view_height)
             render_width = view_width * scale
@@ -86,127 +59,168 @@ class MapView(ttk.Frame):
             y = offset_y + ((max_n - n) * scale)
             return x, y, scale
 
+        # 3. Draw Pins and Overlays
         if self.app.state.last_solutions:
-            solutions = self.app.state.last_solutions
-            num_mortars = len(solutions)
-            
-            for i in range(num_mortars):
-                mortar_e, mortar_n = solutions[i]['mortar_coords']
-                mortar_x, mortar_y, _ = transform(mortar_e, mortar_n)
-                self.graph_canvas.create_oval(mortar_x-5, mortar_y-5, mortar_x+5, mortar_y+5, fill=mortar_colors[i], outline="black")
-                self.graph_canvas.create_text(mortar_x, mortar_y - 15, text=f"Gun {i+1}", fill="black")
-
-            fo_x, fo_y, _ = transform(solutions[0]['fo_coords'][0], solutions[0]['fo_coords'][1])
-            
-            if not (self.app.state.admin_mode_enabled.get() and self.app.state.admin_target_pin):
-                self.graph_canvas.create_oval(fo_x-5, fo_y-5, fo_x+5, fo_y+5, fill=fo_color, outline="black")
-                self.graph_canvas.create_text(fo_x, fo_y - 15, text="FO", fill="black")
-
-            mission_type = self.app.state.fire_mission_type_var.get()
-            
-            if mission_type == "Regular":
-                # For regular missions, all guns fire at the same single target.
-                target_e, target_n = solutions[0]['target_coords']
-                target_x, target_y, scale = transform(target_e, target_n)
-
-                # Use the overall min and max dispersion for the circles
-                min_disp_radius = min(sol['least_tof']['dispersion'] for sol in solutions)
-                max_disp_radius = max(sol['most_tof']['dispersion'] for sol in solutions)
-
-                scaled_min_disp = min_disp_radius * scale
-                scaled_max_disp = max_disp_radius * scale
-
-                # Draw the circles first, ensuring the yellow is only drawn if it's larger.
-                if scaled_max_disp > scaled_min_disp:
-                    self.graph_canvas.create_oval(target_x - scaled_max_disp, target_y - scaled_max_disp, target_x + scaled_max_disp, target_y + scaled_max_disp, outline="yellow", width=2)
-                
-                if scaled_min_disp > 0:
-                    self.graph_canvas.create_oval(target_x - scaled_min_disp, target_y - scaled_min_disp, target_x + scaled_min_disp, target_y + scaled_min_disp, outline="red", width=2)
-
-                # Draw a single target pin on top
-                target_label = self.app.state.loaded_target_name.get() or "Target"
-                for i, sol in enumerate(solutions):
-                    self.graph_canvas.create_oval(target_x - 10, target_y - 10, target_x + 10, target_y + 10, outline=mortar_colors[i], width=2)
-                    self.graph_canvas.create_polygon(target_x, target_y-7, target_x-7, target_y+7, target_x+7, target_y+7, fill=mortar_colors[i], outline="black")
-                self.graph_canvas.create_text(target_x, target_y + 15, text=target_label, fill="black")
-
-                # Draw Legend
-                legend_x = canvas_width - 150
-                legend_y = canvas_height - 50
-                self.graph_canvas.create_rectangle(legend_x, legend_y, legend_x + 20, legend_y + 20, fill="red", outline="black")
-                self.graph_canvas.create_text(legend_x + 30, legend_y + 10, text="Kill Area", anchor="w", fill="black")
-                self.graph_canvas.create_rectangle(legend_x, legend_y + 25, legend_x + 20, legend_y + 45, fill="yellow", outline="black")
-                self.graph_canvas.create_text(legend_x + 30, legend_y + 35, text="Expected Injury Area", anchor="w", fill="black")
-
-
-            elif mission_type in ["Small Barrage", "Large Barrage"]:
-                sol = solutions[0]
-                target_e, target_n = sol['target_coords']
-                target_x, target_y, scale = transform(target_e, target_n)
-                for i, sol_i in enumerate(solutions):
-                    self.graph_canvas.create_oval(target_x - 10, target_y - 10, target_x + 10, target_y + 10, outline=mortar_colors[i], width=2)
-                    self.graph_canvas.create_polygon(target_x, target_y-7, target_x-7, target_y+7, target_x+7, target_y+7, fill=mortar_colors[i], outline="black")
-                self.graph_canvas.create_text(target_x, target_y + 15, text="Target", fill="black")
-                
-                disp = sol['least_tof']['dispersion'] * scale
-                self.graph_canvas.create_oval(target_x - disp, target_y - disp, target_x + disp, target_y + disp, outline="red", width=2)
-
-            elif mission_type == "Creeping Barrage":
-                first_target = solutions[0]['target_coords']
-                last_target = solutions[-1]['target_coords']
-                dispersion = solutions[0]['least_tof']['dispersion']
-                
-                # Draw individual targets
-                for i, sol in enumerate(solutions):
-                    target_e, target_n = sol['target_coords']
-                    target_x, target_y, _ = transform(target_e, target_n)
-                    self.graph_canvas.create_oval(target_x - 10, target_y - 10, target_x + 10, target_y + 10, outline=mortar_colors[i], width=2)
-                    self.graph_canvas.create_polygon(target_x, target_y-7, target_x-7, target_y+7, target_x+7, target_y+7, fill=mortar_colors[i], outline="black")
-                    self.graph_canvas.create_text(target_x, target_y + 15, text=f"Target {i+1}", fill="black")
-
-                # Draw bounding box
-                creep_vec_e = last_target[0] - first_target[0]
-                creep_vec_n = last_target[1] - first_target[1]
-                
-                if creep_vec_e == 0 and creep_vec_n == 0: # Handle case with one target
-                    creep_angle_rad = 0
-                else:
-                    creep_angle_rad = math.atan2(creep_vec_e, creep_vec_n)
-
-                perp_angle_rad = creep_angle_rad + math.pi / 2
-                
-                radius_scaled = dispersion * scale
-
-                start_e = first_target[0] - dispersion * math.sin(creep_angle_rad)
-                start_n = first_target[1] - dispersion * math.cos(creep_angle_rad)
-                end_e = last_target[0] + dispersion * math.sin(creep_angle_rad)
-                end_n = last_target[1] + dispersion * math.cos(creep_angle_rad)
-
-                p1_x, p1_y, _ = transform(start_e - dispersion * math.sin(perp_angle_rad), start_n - dispersion * math.cos(perp_angle_rad))
-                p2_x, p2_y, _ = transform(start_e + dispersion * math.sin(perp_angle_rad), start_n + dispersion * math.cos(perp_angle_rad))
-                p3_x, p3_y, _ = transform(end_e + dispersion * math.sin(perp_angle_rad), end_n + dispersion * math.cos(perp_angle_rad))
-                p4_x, p4_y, _ = transform(end_e - dispersion * math.sin(perp_angle_rad), end_n - dispersion * math.cos(perp_angle_rad))
-                
-                self.graph_canvas.create_polygon(p1_x, p1_y, p2_x, p2_y, p3_x, p3_y, p4_x, p4_y, outline="red", fill="", width=2)
+            self._plot_solution_pins(transform, mortar_colors, fo_color, canvas_width, canvas_height)
         elif self.show_saved_target_var.get():
             self._plot_logged_targets(transform)
         elif self.app.state.admin_mode_enabled.get() and self.app.state.admin_target_pin:
-            target_e, target_n = self.app.state.admin_target_pin
+            self._plot_admin_pin(transform, target_color)
+        elif not self.app.state.map_image:
+            self._draw_placeholder_pins(mortar_colors, fo_color, target_color, canvas_height)
+
+    def _draw_map_image(self, canvas_width, canvas_height, view_width, view_height):
+        map_scale_x = self.app.state.map_x_max_var.get()
+        map_scale_y = self.app.state.map_y_max_var.get()
+        img_width, img_height = self.app.state.map_image.size
+
+        if map_scale_x <= 0 or map_scale_y <= 0: return
+
+        scale = min(canvas_width / view_width, canvas_height / view_height)
+        render_width = int(view_width * scale)
+        render_height = int(view_height * scale)
+        offset_x = (canvas_width - render_width) // 2
+        offset_y = (canvas_height - render_height) // 2
+
+        min_e, min_n, max_e, max_n = self.app.state.map_view
+        crop_min_x = (min_e / map_scale_x) * img_width
+        crop_max_x = (max_e / map_scale_x) * img_width
+        crop_min_y = ((map_scale_y - max_n) / map_scale_y) * img_height
+        crop_max_y = ((map_scale_y - min_n) / map_scale_y) * img_height
+
+        if crop_max_x > crop_min_x and crop_max_y > crop_min_y:
+            cropped_img = self.app.state.map_image.crop((crop_min_x, crop_min_y, crop_max_x, crop_max_y))
+            resized_image = cropped_img.resize((render_width, render_height), Image.LANCZOS)
+            self.app.state.map_photo = ImageTk.PhotoImage(resized_image)
+            self.graph_canvas.create_image(offset_x, offset_y, anchor="nw", image=self.app.state.map_photo)
+
+    def _draw_logo_background(self):
+        logo_path = self.app.theme_manager.theme_config.get("logo_path")
+        if logo_path and os.path.exists(logo_path):
+            try:
+                logo_image = Image.open(logo_path)
+                self.logo_photo = ImageTk.PhotoImage(logo_image)
+                self.graph_canvas.create_image(0, 0, anchor="nw", image=self.logo_photo)
+            except Exception as e:
+                print(f"Error loading logo image: {e}")
+
+    def _plot_solution_pins(self, transform, mortar_colors, fo_color, canvas_width, canvas_height):
+        solutions = self.app.state.last_solutions
+        num_mortars = len(solutions)
+        
+        for i in range(num_mortars):
+            mortar_e, mortar_n = solutions[i]['mortar_coords']
+            mortar_x, mortar_y, _ = transform(mortar_e, mortar_n)
+            self.graph_canvas.create_oval(mortar_x-5, mortar_y-5, mortar_x+5, mortar_y+5, fill=mortar_colors[i], outline="black")
+            self.graph_canvas.create_text(mortar_x, mortar_y - 15, text=f"Gun {i+1}", fill="black")
+
+        fo_x, fo_y, _ = transform(solutions[0]['fo_coords'][0], solutions[0]['fo_coords'][1])
+        
+        if not (self.app.state.admin_mode_enabled.get() and self.app.state.admin_target_pin):
+            self.graph_canvas.create_oval(fo_x-5, fo_y-5, fo_x+5, fo_y+5, fill=fo_color, outline="black")
+            self.graph_canvas.create_text(fo_x, fo_y - 15, text="FO", fill="black")
+
+        mission_type = self.app.state.fire_mission_type_var.get()
+        
+        if mission_type == "Regular":
+            self._plot_regular_mission(solutions, transform, mortar_colors, canvas_width, canvas_height)
+        elif mission_type in ["Small Barrage", "Large Barrage"]:
+            self._plot_barrage_mission(solutions, transform, mortar_colors)
+        elif mission_type == "Creeping Barrage":
+            self._plot_creeping_barrage(solutions, transform, mortar_colors)
+
+    def _plot_regular_mission(self, solutions, transform, mortar_colors, canvas_width, canvas_height):
+        target_e, target_n = solutions[0]['target_coords']
+        target_x, target_y, scale = transform(target_e, target_n)
+
+        min_disp_radius = min(sol['least_tof']['dispersion'] for sol in solutions)
+        max_disp_radius = max(sol['most_tof']['dispersion'] for sol in solutions)
+        scaled_min_disp = min_disp_radius * scale
+        scaled_max_disp = max_disp_radius * scale
+
+        if scaled_max_disp > scaled_min_disp:
+            self.graph_canvas.create_oval(target_x - scaled_max_disp, target_y - scaled_max_disp, target_x + scaled_max_disp, target_y + scaled_max_disp, outline="yellow", width=2)
+        if scaled_min_disp > 0:
+            self.graph_canvas.create_oval(target_x - scaled_min_disp, target_y - scaled_min_disp, target_x + scaled_min_disp, target_y + scaled_min_disp, outline="red", width=2)
+
+        target_label = self.app.state.loaded_target_name.get() or "Target"
+        for i, sol in enumerate(solutions):
+            self.graph_canvas.create_oval(target_x - 10, target_y - 10, target_x + 10, target_y + 10, outline=mortar_colors[i], width=2)
+            self.graph_canvas.create_polygon(target_x, target_y-7, target_x-7, target_y+7, target_x+7, target_y+7, fill=mortar_colors[i], outline="black")
+        self.graph_canvas.create_text(target_x, target_y + 15, text=target_label, fill="black")
+
+        legend_x = canvas_width - 150
+        legend_y = canvas_height - 50
+        self.graph_canvas.create_rectangle(legend_x, legend_y, legend_x + 20, legend_y + 20, fill="red", outline="black")
+        self.graph_canvas.create_text(legend_x + 30, legend_y + 10, text="Kill Area", anchor="w", fill="black")
+        self.graph_canvas.create_rectangle(legend_x, legend_y + 25, legend_x + 20, legend_y + 45, fill="yellow", outline="black")
+        self.graph_canvas.create_text(legend_x + 30, legend_y + 35, text="Expected Injury Area", anchor="w", fill="black")
+
+    def _plot_barrage_mission(self, solutions, transform, mortar_colors):
+        sol = solutions[0]
+        target_e, target_n = sol['target_coords']
+        target_x, target_y, scale = transform(target_e, target_n)
+        for i, sol_i in enumerate(solutions):
+            self.graph_canvas.create_oval(target_x - 10, target_y - 10, target_x + 10, target_y + 10, outline=mortar_colors[i], width=2)
+            self.graph_canvas.create_polygon(target_x, target_y-7, target_x-7, target_y+7, target_x+7, target_y+7, fill=mortar_colors[i], outline="black")
+        self.graph_canvas.create_text(target_x, target_y + 15, text="Target", fill="black")
+        
+        disp = sol['least_tof']['dispersion'] * scale
+        self.graph_canvas.create_oval(target_x - disp, target_y - disp, target_x + disp, target_y + disp, outline="red", width=2)
+
+    def _plot_creeping_barrage(self, solutions, transform, mortar_colors):
+        first_target = solutions[0]['target_coords']
+        last_target = solutions[-1]['target_coords']
+        dispersion = solutions[0]['least_tof']['dispersion']
+        
+        for i, sol in enumerate(solutions):
+            target_e, target_n = sol['target_coords']
             target_x, target_y, _ = transform(target_e, target_n)
-            self.graph_canvas.create_polygon(target_x, target_y-7, target_x-7, target_y+7, target_x+7, target_y+7, fill=target_color, outline="black")
-            self.graph_canvas.create_text(target_x, target_y + 15, text="Target", fill="black")
-        elif self.app.state.map_image:
-             pass
+            self.graph_canvas.create_oval(target_x - 10, target_y - 10, target_x + 10, target_y + 10, outline=mortar_colors[i], width=2)
+            self.graph_canvas.create_polygon(target_x, target_y-7, target_x-7, target_y+7, target_x+7, target_y+7, fill=mortar_colors[i], outline="black")
+            self.graph_canvas.create_text(target_x, target_y + 15, text=f"Target {i+1}", fill="black")
+
+        creep_vec_e = last_target[0] - first_target[0]
+        creep_vec_n = last_target[1] - first_target[1]
+        
+        if creep_vec_e == 0 and creep_vec_n == 0:
+            creep_angle_rad = 0
         else:
-            text_color = "black"
-            placeholder_x = 50
-            mortar_y, fo_y, target_y = canvas_height - 80, canvas_height - 50, canvas_height - 20
-            self.graph_canvas.create_oval(placeholder_x - 5, mortar_y - 5, placeholder_x + 5, mortar_y + 5, fill=mortar_colors[0], outline="black")
-            self.graph_canvas.create_text(placeholder_x + 25, mortar_y, text="Mortar", fill=text_color, anchor="w")
-            self.graph_canvas.create_oval(placeholder_x - 5, fo_y - 5, placeholder_x + 5, fo_y + 5, fill=fo_color, outline="black")
-            self.graph_canvas.create_text(placeholder_x + 25, fo_y, text="FO", fill=text_color, anchor="w")
-            self.graph_canvas.create_polygon(placeholder_x, target_y - 7, placeholder_x - 7, target_y + 7, placeholder_x + 7, target_y + 7, fill=target_color, outline="black")
-            self.graph_canvas.create_text(placeholder_x + 25, target_y, text="Target", fill=text_color, anchor="w")
+            creep_angle_rad = math.atan2(creep_vec_e, creep_vec_n)
+
+        perp_angle_rad = creep_angle_rad + math.pi / 2
+        
+        _, _, scale = transform(0,0) # Get scale
+        radius_scaled = dispersion * scale
+
+        start_e = first_target[0] - dispersion * math.sin(creep_angle_rad)
+        start_n = first_target[1] - dispersion * math.cos(creep_angle_rad)
+        end_e = last_target[0] + dispersion * math.sin(creep_angle_rad)
+        end_n = last_target[1] + dispersion * math.cos(creep_angle_rad)
+
+        p1_x, p1_y, _ = transform(start_e - dispersion * math.sin(perp_angle_rad), start_n - dispersion * math.cos(perp_angle_rad))
+        p2_x, p2_y, _ = transform(start_e + dispersion * math.sin(perp_angle_rad), start_n + dispersion * math.cos(perp_angle_rad))
+        p3_x, p3_y, _ = transform(end_e + dispersion * math.sin(perp_angle_rad), end_n + dispersion * math.cos(perp_angle_rad))
+        p4_x, p4_y, _ = transform(end_e - dispersion * math.sin(perp_angle_rad), end_n - dispersion * math.cos(perp_angle_rad))
+        
+        self.graph_canvas.create_polygon(p1_x, p1_y, p2_x, p2_y, p3_x, p3_y, p4_x, p4_y, outline="red", fill="", width=2)
+
+    def _plot_admin_pin(self, transform, target_color):
+        target_e, target_n = self.app.state.admin_target_pin
+        target_x, target_y, _ = transform(target_e, target_n)
+        self.graph_canvas.create_polygon(target_x, target_y-7, target_x-7, target_y+7, target_x+7, target_y+7, fill=target_color, outline="black")
+        self.graph_canvas.create_text(target_x, target_y + 15, text="Target", fill="black")
+
+    def _draw_placeholder_pins(self, mortar_colors, fo_color, target_color, canvas_height):
+        text_color = "black"
+        placeholder_x = 50
+        mortar_y, fo_y, target_y = canvas_height - 80, canvas_height - 50, canvas_height - 20
+        self.graph_canvas.create_oval(placeholder_x - 5, mortar_y - 5, placeholder_x + 5, mortar_y + 5, fill=mortar_colors[0], outline="black")
+        self.graph_canvas.create_text(placeholder_x + 25, mortar_y, text="Mortar", fill=text_color, anchor="w")
+        self.graph_canvas.create_oval(placeholder_x - 5, fo_y - 5, placeholder_x + 5, fo_y + 5, fill=fo_color, outline="black")
+        self.graph_canvas.create_text(placeholder_x + 25, fo_y, text="FO", fill=text_color, anchor="w")
+        self.graph_canvas.create_polygon(placeholder_x, target_y - 7, placeholder_x - 7, target_y + 7, placeholder_x + 7, target_y + 7, fill=target_color, outline="black")
+        self.graph_canvas.create_text(placeholder_x + 25, target_y, text="Target", fill=text_color, anchor="w")
 
 
     def _plot_logged_targets(self, transform_func):

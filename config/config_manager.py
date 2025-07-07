@@ -9,6 +9,7 @@ class ConfigManager:
         self.app_dir = self._get_app_dir()
         self.maps_dir = os.path.join(self.app_dir, 'maps')
         self.config_path = os.path.join(self.app_dir, 'maps_config.json')
+        self.log_file_path = os.path.join(self.app_dir, 'fire_missions.json')
         self.maps_config = {}
         self._initialize()
 

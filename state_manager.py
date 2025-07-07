@@ -37,6 +37,7 @@ class StateManager:
         self.fo_dist_var = tk.DoubleVar(value=1000)
         self.fo_elev_diff_var = tk.DoubleVar(value=0)
         self.creep_direction_var = tk.DoubleVar(value=0)
+        self.creep_spread_var = tk.DoubleVar(value=1.0)
         
         self.corr_lr_var = tk.DoubleVar(value=0)
         self.corr_ad_var = tk.DoubleVar(value=0)
@@ -87,3 +88,23 @@ class StateManager:
     def get_mortar_vars(self, index):
         """Returns the variables for a specific mortar."""
         return self.mortar_input_vars[index]
+    def reset_inputs(self):
+        """Resets all user-configurable input fields to their default state."""
+        self.num_mortars_var.set(1)
+        self.fire_mission_type_var.set("Regular")
+        
+        self.fo_grid_var.set("0000000000")
+        self.fo_elev_var.set(100)
+        self.fo_id_var.set("")
+        self.fo_azimuth_var.set(0)
+        self.fo_dist_var.set(1000)
+        self.fo_elev_diff_var.set(0)
+        self.creep_direction_var.set(0)
+        self.creep_spread_var.set(1.0)
+        
+        self.corr_lr_var.set(0)
+        self.corr_ad_var.set(0)
+        
+        # Reset mortar inputs
+        self.clear_mortars()
+        self.add_mortar() # Add back one default mortar

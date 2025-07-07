@@ -9,7 +9,7 @@ from calculations import (
     calculate_creeping_barrage,
 )
 
-def worker_thread(task_queue, result_queue):
+def worker_thread(task_queue, result_queue, app):
     """
     The main function for the worker thread.
     Continuously fetches tasks from the task_queue, processes them,
@@ -27,6 +27,8 @@ def worker_thread(task_queue, result_queue):
             # Pass exceptions back to the main thread to be handled
             result_queue.put(e)
         finally:
+            # Always generate the event, even if an exception occurred
+            app.event_generate("<<CalculationFinished>>")
             task_queue.task_done()
 
 def process_task(task):
@@ -36,6 +38,7 @@ def process_task(task):
     mission_type = task['mission_type']
     ammo = task['ammo']
     creep_direction = task['creep_direction']
+    creep_spread = task['creep_spread']
     
     fo_grid_str = task['fo_grid_str']
     fo_elev = task['fo_elev']
@@ -72,7 +75,7 @@ def process_task(task):
     elif mission_type == "Large Barrage":
         solutions = calculate_large_barrage(mortars, initial_target, ammo)
     elif mission_type == "Creeping Barrage":
-        solutions = calculate_creeping_barrage(mortars, initial_target, creep_direction, ammo)
+        solutions = calculate_creeping_barrage(mortars, initial_target, creep_direction, ammo, creep_spread)
     else:
         raise ValueError(f"Invalid mission type: {mission_type}")
 

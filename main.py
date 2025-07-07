@@ -68,7 +68,7 @@ class MortarCalculatorApp(tk.Tk):
         screen_width, screen_height = self.winfo_screenwidth(), self.winfo_screenheight()
         width, height = 1015, 1180
         x = screen_width - width
-        y = (screen_height - height) // 2
+        y = 0
         self.geometry(f"{width}x{height}+{x}+{y}")
 
         # Core Application State
@@ -92,16 +92,20 @@ class MortarCalculatorApp(tk.Tk):
         # Setup worker thread and queues
         self.task_queue = queue.Queue()
         self.result_queue = queue.Queue()
-        self.worker = threading.Thread(target=worker_thread, args=(self.task_queue, self.result_queue), daemon=True)
+        self.worker = threading.Thread(target=worker_thread, args=(self.task_queue, self.result_queue, self), daemon=True)
         self.worker.start()
-
-        # Start processing results
-        self.process_results()
-
+ 
+        # Bind custom event for worker thread communication
+        self.bind("<<CalculationFinished>>", self.on_calculation_finished)
+ 
         self.bind('<Control-Return>', lambda event: self.calculate_all())
         self.bind('<Control-n>', lambda event: self.new_mission())
         self.bind('<Control-l>', lambda event: self.load_log_from_file())
         self.protocol("WM_DELETE_WINDOW", self.on_closing)
+        self.bind("<Configure>", self.on_resize)
+
+    def on_resize(self, event=None):
+        self.canvas.configure(scrollregion=self.canvas.bbox("all"))
 
     def setup_ui(self):
         self.notebook = ttk.Notebook(self)
@@ -121,6 +125,11 @@ class MortarCalculatorApp(tk.Tk):
         
         self.canvas.pack(side="left", fill="both", expand=True)
         self.scrollbar.pack(side="right", fill="y")
+
+        def _on_mousewheel(event):
+            self.canvas.yview_scroll(int(-1*(event.delta/120)), "units")
+        self.canvas.bind_all("<MouseWheel>", _on_mousewheel)
+
         self.notebook.add(main_tab_frame, text="Main")
         self.notebook.add(self.fire_mission_planner_tab, text="Fire Mission Planner")
         self.notebook.add(self.settings_tab, text="Settings")
@@ -129,7 +138,7 @@ class MortarCalculatorApp(tk.Tk):
         self.setup_results_widgets()
         self.setup_fire_mission_planner_tab()
         self.setup_settings_tab()
-        self.mission_log = MissionLog(self.main_tab, self)
+        self.mission_log = MissionLog(self.main_tab, self, self.config_manager)
 
     def post_init_load(self):
         """Load configs and populate UI after the main loop has started."""
@@ -204,8 +213,17 @@ class MortarCalculatorApp(tk.Tk):
         ttk.Label(fo_frame, text="Elev. Change to Target (m):").grid(row=2, column=0, padx=5, pady=2, sticky="w")
         ttk.Entry(fo_frame, textvariable=self.state.fo_elev_diff_var, width=7).grid(row=2, column=1, padx=5, pady=2)
         
-        ttk.Label(fo_frame, text="Creep Direction (Degrees):").grid(row=2, column=2, padx=5, pady=2, sticky="w")
-        ttk.Entry(fo_frame, textvariable=self.state.creep_direction_var, width=7).grid(row=2, column=3, padx=5, pady=2)
+        self.creep_direction_label = ttk.Label(fo_frame, text="Creep Direction (Degrees):")
+        self.creep_direction_label.grid(row=2, column=2, padx=5, pady=2, sticky="w")
+        self.creep_direction_entry = ttk.Entry(fo_frame, textvariable=self.state.creep_direction_var, width=7)
+        self.creep_direction_entry.grid(row=2, column=3, padx=5, pady=2)
+
+        self.creep_spread_label = ttk.Label(fo_frame, text="Creep Spread (x):")
+        self.creep_spread_label.grid(row=3, column=0, padx=5, pady=2, sticky="w")
+        self.creep_spread_slider = ttk.Scale(fo_frame, from_=0.5, to=2.0, orient="horizontal", variable=self.state.creep_spread_var)
+        self.creep_spread_slider.grid(row=3, column=1, padx=5, pady=2, sticky="ew")
+        self.creep_spread_value_label = ttk.Label(fo_frame, textvariable=self.state.creep_spread_var)
+        self.creep_spread_value_label.grid(row=3, column=2, padx=5, pady=2, sticky="w")
 
         corr_frame = ttk.LabelFrame(input_frame, text="4. Fire Mission Corrections (Optional)")
         corr_frame.pack(fill="x", expand=True, pady=5)
@@ -436,7 +454,6 @@ class MortarCalculatorApp(tk.Tk):
             self.state.fo_grid_var.set("--- ADMIN ---")
             self.state.fo_azimuth_var.set(0)
             self.state.fo_dist_var.set(0)
-            self.state.last_coords = {}
             self.map_view_widget.plot_positions()
 
     def calculate_all(self):
@@ -460,6 +477,7 @@ class MortarCalculatorApp(tk.Tk):
                 'mission_type': self.state.fire_mission_type_var.get(),
                 'ammo': self.state.ammo_type_var.get(),
                 'creep_direction': self.state.creep_direction_var.get(),
+                'creep_spread': self.state.creep_spread_var.get(),
                 'fo_grid_str': self.state.fo_grid_var.get(),
                 'fo_elev': self.state.fo_elev_var.get(),
                 'fo_azimuth_deg': self.state.fo_azimuth_var.get(),
@@ -473,8 +491,8 @@ class MortarCalculatorApp(tk.Tk):
         except Exception as e:
             self.handle_calculation_error(e)
 
-    def process_results(self):
-        """Checks the result queue and updates the UI."""
+    def on_calculation_finished(self, event=None):
+        """Handles the custom event triggered by the worker thread."""
         try:
             result = self.result_queue.get_nowait()
             if isinstance(result, Exception):
@@ -482,9 +500,7 @@ class MortarCalculatorApp(tk.Tk):
             else:
                 self.process_and_update_ui(result)
         except queue.Empty:
-            pass  # No results yet
-        finally:
-            self.after(100, self.process_results)
+            pass  # Should not happen if event is triggered correctly
 
     def confirm_danger_close(self):
         self.status_label.config(text="DANGER CLOSE ARE YOU SURE?", foreground="red")
@@ -763,8 +779,20 @@ class MortarCalculatorApp(tk.Tk):
         self.map_view_widget.plot_positions()
 
     def on_mission_type_change(self):
-        # self.calculate_all() # Removed to prevent auto-calculation on selection
-        pass
+        is_creeping = self.state.fire_mission_type_var.get() == "Creeping Barrage"
+        
+        if is_creeping:
+            self.creep_direction_label.grid()
+            self.creep_direction_entry.grid()
+            self.creep_spread_label.grid()
+            self.creep_spread_slider.grid()
+            self.creep_spread_value_label.grid()
+        else:
+            self.creep_direction_label.grid_remove()
+            self.creep_direction_entry.grid_remove()
+            self.creep_spread_label.grid_remove()
+            self.creep_spread_slider.grid_remove()
+            self.creep_spread_value_label.grid_remove()
 
     def new_mission(self):
         if messagebox.askyesno("New Mission", "This will clear all current mission data. Are you sure?"):

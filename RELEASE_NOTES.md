@@ -1,19 +1,15 @@
-### Release Notes - v1.3.2
+### Release Notes - v1.3.3 (Future)
 
 #### ✨ New Features
-*   **Show Logged Targets:** You can now display all targets from the mission log on the map at the same time, providing a complete tactical overview.
-*   **Enhanced Map Visualization:** Target markers are now highlighted with a colored circle corresponding to the firing mortar, and locked input fields are color-coded to match their map icons, creating a more intuitive and visually cohesive experience.
-*   **Multi-Mortar UI:** The user interface for managing multiple mortars has been streamlined. The control for selecting the number of mortars is now logically grouped with the mortar position inputs.
-
-#### 🛠️ Refactoring
-*   **Asynchronous Architecture:** Implemented a major performance enhancement by moving all firing solution calculations to a separate background thread. This ensures the user interface remains fluid and responsive, even during complex calculations, providing a much smoother user experience.
-*   **Code Quality:** The `update_ui_with_solution` method in `main.py` has been refactored into smaller, more specialized functions to improve readability and maintainability.
-*   **State Management:** Continued to centralize application state by moving all map-related variables to the `StateManager`. This improves code organization and maintainability.
-*   **Barrage Logic:** The `calculate_small_barrage` and `calculate_large_barrage` functions have been refactored into a single, more generic function to reduce code duplication.
+*   **Scroll Wheel Navigation:** The mouse scroll wheel now works on the main application canvas, allowing for easier navigation of the UI.
+*   **Adjustable Creeping Barrage:** Added a slider to control the spread of the creeping barrage, allowing for more tactical flexibility.
 
 #### 🐛 Bug Fixes
-*   **Locked Input Readability:** Fixed an issue where text in locked input fields was unreadable. The text is now white and clearly visible against the colored background.
-*   **Barrage Logic:** Corrected the logic for "Small Barrage" and "Large Barrage" calculations. They now correctly prioritize the shortest and longest Time of Flight (ToF) respectively, as originally intended in the project plan.
-*   **UI Rendering:** Fixed a visual bug that caused text to become garbled during fast scrolling in both the main input area and the mission log.
-*   **Mission Log:** Fixed a critical bug where mortar positions were not being correctly saved to or loaded from mission log files.
-*   Resolved an `AttributeError` that occurred after the state management refactoring.
+*   **File Permissions:** Fixed a `PermissionError` that occurred when launching the application from "Recent Apps" by ensuring all file paths are absolute.
+*   **Window Position:** Corrected the initial window position to prevent the application from opening partially off-screen.
+*   **Fullscreen Display:** Resolved an issue where white bars would appear when the application was in fullscreen mode.
+*   **Application Stability:** Fixed a bug that caused the application to hang after long periods of inactivity by implementing a more robust event system for thread communication.
+*   **Map Change Stability:** Fixed a bug where changing the map after a calculation would cause the application to become unresponsive. The application state is now properly reset when a new map is selected.
+
+#### 🤖 Roo's Notes
+*   

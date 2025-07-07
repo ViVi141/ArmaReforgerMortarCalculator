@@ -218,7 +218,7 @@ def calculate_large_barrage(mortars, target_coords, ammo):
     """Calculates a large barrage, prioritizing the round with the longest Time of Flight (ToF)."""
     return _calculate_barrage(mortars, target_coords, ammo, sort_key='tof', reverse=True)
 
-def calculate_creeping_barrage(mortars, initial_target, creep_direction, ammo):
+def calculate_creeping_barrage(mortars, initial_target, creep_direction, ammo, creep_spread=1.0):
     """Calculates a creeping barrage."""
     if len(mortars) < 3:
         raise ValueError("Creeping barrage requires at least 3 mortars.")
@@ -247,7 +247,7 @@ def calculate_creeping_barrage(mortars, initial_target, creep_direction, ammo):
     creep_rad = math.radians(creep_direction)
     
     for i, mortar in enumerate(mortars):
-        offset_dist = i * min_dispersion
+        offset_dist = i * min_dispersion * creep_spread
         
         new_target_e = initial_target[0] + offset_dist * math.sin(creep_rad)
         new_target_n = initial_target[1] + offset_dist * math.cos(creep_rad)

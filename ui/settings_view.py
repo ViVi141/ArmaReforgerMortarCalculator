@@ -92,6 +92,9 @@ class SettingsView(ttk.Frame):
         self.app.state.map_x_max_var.set(config.get('x_max', 1000))
         self.app.state.map_y_max_var.set(config.get('y_max', 1000))
         
+        self.app.clear_solution()
+        self.app.state.last_solutions = []
+        self.app.state.last_coords = {}
         self.app.load_map_image_and_view()
 
     def upload_map(self):

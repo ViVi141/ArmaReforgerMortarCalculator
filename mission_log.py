@@ -4,11 +4,12 @@ import json
 import os
 
 class MissionLog:
-    def __init__(self, parent_frame, app):
+    def __init__(self, parent_frame, app, config_manager):
         self.app = app
+        self.config_manager = config_manager
         self.log_data = []
         self.logged_target_coords = []
-        self.log_file = "fire_missions.json"
+        self.log_file = self.config_manager.log_file_path
         self.create_log_widgets(parent_frame)
         self.load_log()
 
