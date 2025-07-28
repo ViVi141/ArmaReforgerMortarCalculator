@@ -14,6 +14,7 @@ class StateManager:
         self.selected_map_var = tk.StringVar()
         self.admin_mode_enabled = tk.BooleanVar(value=False)
         self.admin_target_pin = None
+        self.faction_var = tk.StringVar(value="NATO")
 
         # Map State
         self.map_image = None

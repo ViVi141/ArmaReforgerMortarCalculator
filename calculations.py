@@ -79,10 +79,19 @@ def calculate_best_correction(initial_e, initial_n, fo_azimuth_rad, lr_corr, ad_
             
     return best_point
 
-def find_valid_solutions(ammo, distance, elev_diff):
+def find_valid_solutions(faction, ammo, distance, elev_diff):
     """Finds all valid firing solutions for a given ammo, distance, and elevation change."""
     valid_solutions = []
-    for charge, charge_data in BALLISTIC_DATA[ammo].items():
+    
+    faction_data = BALLISTIC_DATA.get(faction)
+    if not faction_data:
+        raise ValueError(f"Invalid faction: {faction}")
+    
+    ammo_data = faction_data.get(ammo)
+    if not ammo_data:
+        raise ValueError(f"Invalid ammo type '{ammo}' for faction '{faction}'")
+
+    for charge, charge_data in ammo_data.items():
         charge_ranges = charge_data['ranges']
         sorted_ranges = sorted(charge_ranges.keys())
         if not (sorted_ranges[0] <= distance <= sorted_ranges[-1]):
@@ -158,7 +167,7 @@ def calculate_new_fo_data(fo_coords, target_coords):
 
     return new_azimuth_deg, new_dist
 
-def calculate_regular_mission(mortars, target_coords, ammo):
+def calculate_regular_mission(mortars, target_coords, faction, ammo):
     """Calculates a regular fire mission for one or more mortars."""
     solutions = []
     for mortar in mortars:
@@ -168,7 +177,7 @@ def calculate_regular_mission(mortars, target_coords, ammo):
         
         dist = math.sqrt((target_e - mortar_e)**2 + (target_n - mortar_n)**2)
         
-        valid_solutions = find_valid_solutions(ammo, dist, elev_diff)
+        valid_solutions = find_valid_solutions(faction, ammo, dist, elev_diff)
         if not valid_solutions:
             raise ValueError(f"No valid solution for {mortar.get('callsign', 'gun')}")
             
@@ -186,7 +195,7 @@ def calculate_regular_mission(mortars, target_coords, ammo):
         })
     return solutions
 
-def _calculate_barrage(mortars, target_coords, ammo, sort_key='tof', reverse=False):
+def _calculate_barrage(mortars, target_coords, faction, ammo, sort_key='tof', reverse=False):
     """Helper function to calculate barrage missions."""
     solutions = []
     for mortar in mortars:
@@ -195,7 +204,7 @@ def _calculate_barrage(mortars, target_coords, ammo, sort_key='tof', reverse=Fal
         dist = math.sqrt((target_e - mortar_e)**2 + (target_n - mortar_n)**2)
         elev_diff = target_elev - mortar['elev']
         
-        valid_solutions = find_valid_solutions(ammo, dist, elev_diff)
+        valid_solutions = find_valid_solutions(faction, ammo, dist, elev_diff)
         if not valid_solutions:
             raise ValueError(f"No valid solution for {mortar.get('callsign', 'gun')}")
             
@@ -210,15 +219,15 @@ def _calculate_barrage(mortars, target_coords, ammo, sort_key='tof', reverse=Fal
         })
     return solutions
 
-def calculate_small_barrage(mortars, target_coords, ammo):
+def calculate_small_barrage(mortars, target_coords, faction, ammo):
     """Calculates a small barrage, prioritizing the round with the shortest Time of Flight (ToF)."""
-    return _calculate_barrage(mortars, target_coords, ammo, sort_key='tof', reverse=False)
+    return _calculate_barrage(mortars, target_coords, faction, ammo, sort_key='tof', reverse=False)
 
-def calculate_large_barrage(mortars, target_coords, ammo):
+def calculate_large_barrage(mortars, target_coords, faction, ammo):
     """Calculates a large barrage, prioritizing the round with the longest Time of Flight (ToF)."""
-    return _calculate_barrage(mortars, target_coords, ammo, sort_key='tof', reverse=True)
+    return _calculate_barrage(mortars, target_coords, faction, ammo, sort_key='tof', reverse=True)
 
-def calculate_creeping_barrage(mortars, initial_target, creep_direction, ammo, creep_spread=1.0):
+def calculate_creeping_barrage(mortars, initial_target, creep_direction, faction, ammo, creep_spread=1.0):
     """Calculates a creeping barrage."""
     if len(mortars) < 3:
         raise ValueError("Creeping barrage requires at least 3 mortars.")
@@ -235,7 +244,7 @@ def calculate_creeping_barrage(mortars, initial_target, creep_direction, ammo, c
     dist = math.sqrt((target_e - mortar_e)**2 + (target_n - mortar_n)**2)
     elev_diff = target_elev - mortars[0]['elev']
     
-    possible_solutions = find_valid_solutions(ammo, dist, elev_diff)
+    possible_solutions = find_valid_solutions(faction, ammo, dist, elev_diff)
     if not possible_solutions:
         raise ValueError("No valid charges for creeping barrage.")
         
@@ -257,7 +266,7 @@ def calculate_creeping_barrage(mortars, initial_target, creep_direction, ammo, c
         dist = math.sqrt((new_target_e - mortar_e)**2 + (new_target_n - mortar_n)**2)
         elev_diff = new_target_coords[2] - mortar['elev']
         
-        valid_solutions = find_valid_solutions(ammo, dist, elev_diff)
+        valid_solutions = find_valid_solutions(faction, ammo, dist, elev_diff)
         
         final_solution = None
         for sol in valid_solutions:

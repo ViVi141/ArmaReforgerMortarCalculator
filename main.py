@@ -7,7 +7,7 @@ from tkinter import ttk, messagebox, filedialog, simpledialog
 from PIL import Image, ImageTk
 import math
 
-from ballistics import BALLISTIC_DATA
+from ballistics import BALLISTIC_DATA, MILS_PER_REVOLUTION
 from calculations import (
     parse_grid,
     calculate_target_coords,
@@ -84,8 +84,7 @@ class MortarCalculatorApp(tk.Tk):
         
         self.setup_ui()
         
-        self.ammo_type_combo.current(0)
-        self.update_charge_options()
+        self.on_faction_change() # Set initial ammo and charge based on default faction
         self.theme_manager.apply_theme()
         self.after(100, self.post_init_load)
 
@@ -102,10 +101,6 @@ class MortarCalculatorApp(tk.Tk):
         self.bind('<Control-n>', lambda event: self.new_mission())
         self.bind('<Control-l>', lambda event: self.load_log_from_file())
         self.protocol("WM_DELETE_WINDOW", self.on_closing)
-        self.bind("<Configure>", self.on_resize)
-
-    def on_resize(self, event=None):
-        self.canvas.configure(scrollregion=self.canvas.bbox("all"))
 
     def setup_ui(self):
         self.notebook = ttk.Notebook(self)
@@ -120,7 +115,12 @@ class MortarCalculatorApp(tk.Tk):
         
         self.main_tab.bind("<Configure>", lambda e: self.canvas.configure(scrollregion=self.canvas.bbox("all")))
         
-        self.canvas.create_window((0, 0), window=self.main_tab, anchor="nw")
+        main_tab_window = self.canvas.create_window((0, 0), window=self.main_tab, anchor="nw")
+
+        def on_canvas_configure(event):
+            self.canvas.itemconfig(main_tab_window, width=event.width)
+        self.canvas.bind("<Configure>", on_canvas_configure)
+        
         self.canvas.configure(yscrollcommand=self.scrollbar.set)
         
         self.canvas.pack(side="left", fill="both", expand=True)
@@ -152,7 +152,7 @@ class MortarCalculatorApp(tk.Tk):
 
     def setup_main_tab(self):
         input_frame = ttk.Frame(self.main_tab)
-        input_frame.pack(fill="x", expand=True)
+        input_frame.pack(fill="both", expand=True)
         
         self.mortar_frame = ttk.LabelFrame(input_frame, text="1. Mortar Positions")
         self.mortar_frame.pack(fill="x", expand=True, pady=5)
@@ -175,10 +175,19 @@ class MortarCalculatorApp(tk.Tk):
 
         # --- Right Frame for Ammo ---
         right_fm_frame = ttk.Frame(fire_mission_frame)
-        right_fm_frame.pack(side="right", padx=20, pady=5, anchor="e")
+        right_fm_frame.pack(side="right", padx=20, pady=5, anchor="n")
+
+        # --- Faction Selection ---
+        faction_frame = ttk.Frame(right_fm_frame)
+        faction_frame.pack(anchor="w", pady=(0,10))
+        ttk.Label(faction_frame, text="Faction:").pack(side="left", anchor="w")
+        nato_radio = ttk.Radiobutton(faction_frame, text="NATO", variable=self.state.faction_var, value="NATO", command=self.on_faction_change)
+        nato_radio.pack(side="left", padx=5)
+        ru_radio = ttk.Radiobutton(faction_frame, text="RU", variable=self.state.faction_var, value="RU", command=self.on_faction_change)
+        ru_radio.pack(side="left")
+
         ttk.Label(right_fm_frame, text="Ammunition:").pack(anchor="w")
         self.ammo_type_combo = ttk.Combobox(right_fm_frame, textvariable=self.state.ammo_type_var, state="readonly")
-        self.ammo_type_combo['values'] = list(BALLISTIC_DATA.keys())
         self.ammo_type_combo.pack(anchor="w")
         self.ammo_type_combo.bind("<<ComboboxSelected>>", self.update_charge_options)
 
@@ -430,10 +439,22 @@ class MortarCalculatorApp(tk.Tk):
         for widget in widgets.values():
             widget.config(state=state)
 
+    def on_faction_change(self):
+        """Updates the ammunition dropdown based on the selected faction."""
+        selected_faction = self.state.faction_var.get()
+        ammo_list = list(BALLISTIC_DATA.get(selected_faction, {}).keys())
+        self.ammo_type_combo['values'] = ammo_list
+        if ammo_list:
+            self.state.ammo_type_var.set(ammo_list[0])
+        else:
+            self.state.ammo_type_var.set("")
+        self.update_charge_options()
+
     def update_charge_options(self, event=None):
+        selected_faction = self.state.faction_var.get()
         selected_ammo = self.state.ammo_type_var.get()
-        if selected_ammo:
-            charges = list(BALLISTIC_DATA[selected_ammo].keys())
+        if selected_faction and selected_ammo:
+            charges = list(BALLISTIC_DATA[selected_faction][selected_ammo].keys())
             self.spotting_charge_combo['values'] = charges
             if charges:
                 self.spotting_charge_combo.current(0)
@@ -475,6 +496,7 @@ class MortarCalculatorApp(tk.Tk):
 
             task = {
                 'mission_type': self.state.fire_mission_type_var.get(),
+                'faction': self.state.faction_var.get(),
                 'ammo': self.state.ammo_type_var.get(),
                 'creep_direction': self.state.creep_direction_var.get(),
                 'creep_spread': self.state.creep_spread_var.get(),
@@ -541,8 +563,11 @@ class MortarCalculatorApp(tk.Tk):
                 mortar_target_dist = math.sqrt(delta_easting**2 + delta_northing**2)
                 mortar_target_elev_diff = target_elev - sol['mortar']['elev']
                 azimuth_rad_mt = math.atan2(delta_easting, delta_northing)
-                azimuth_mils_mt = (azimuth_rad_mt / math.pi) * 3200
-                if azimuth_mils_mt < 0: azimuth_mils_mt += 6400
+                selected_faction = self.state.faction_var.get()
+                mils_in_revolution = MILS_PER_REVOLUTION.get(selected_faction, 6400)
+                azimuth_mils_mt = (azimuth_rad_mt / math.pi) * (mils_in_revolution / 2)
+                if azimuth_mils_mt < 0:
+                    azimuth_mils_mt += mils_in_revolution
                 
                 processed_solutions.append({
                     "mortar_coords": (mortar_e, mortar_n),
@@ -669,9 +694,8 @@ class MortarCalculatorApp(tk.Tk):
 
 
     def handle_calculation_error(self, e):
-        self.state.least_tof_charge_var.set("ERROR")
-        self.state.least_tof_elev_var.set(str(e))
-        self.clear_solution(clear_error=False)
+        self.clear_solution(clear_error=True) # Clear previous solution before showing error
+        self.state.correction_status_var.set(f"Error: {e}")
         self.state.quick_azimuth_var.set("---- MIL")
         self.state.quick_least_tof_elev_var.set("C-: ---- MIL")
         self.state.quick_most_tof_elev_var.set("C-: ---- MIL")
@@ -718,6 +742,7 @@ class MortarCalculatorApp(tk.Tk):
             "corr_lr": self.state.corr_lr_var.get(),
             "corr_ad": self.state.corr_ad_var.get(),
             "spotting_charge": self.state.spotting_charge_var.get(),
+            "faction": self.state.faction_var.get(),
             "ammo": self.state.ammo_type_var.get(),
             "calculated_target_grid": calculated_target_grid,
             "mortar_to_target_azimuth": self.state.mortar_to_target_azimuth_var.get(),
@@ -739,7 +764,7 @@ class MortarCalculatorApp(tk.Tk):
             mortar_vars['locked'].set(mortar_data.get("locked", False))
             self.toggle_mortar_lock(i)
 
-        self.state.fire_mission_type_var.set("") # Clear mission type on load
+        self.state.fire_mission_type_var.set("Regular") # Default to Regular on load
         self.state.fo_grid_var.set(mission_data.get("fo_grid", ""))
         self.state.fo_elev_var.set(mission_data.get("fo_elev", 0))
         self.state.fo_id_var.set(mission_data.get("fo_id", ""))
@@ -748,6 +773,8 @@ class MortarCalculatorApp(tk.Tk):
         self.state.fo_elev_diff_var.set(mission_data.get("fo_elev_diff", 0))
         self.state.corr_lr_var.set(mission_data.get("corr_lr", 0))
         self.state.corr_ad_var.set(mission_data.get("corr_ad", 0))
+        self.state.faction_var.set(mission_data.get("faction", "NATO"))
+        self.on_faction_change()
         self.state.ammo_type_var.set(mission_data.get("ammo", ""))
         self.update_charge_options()
         self.state.spotting_charge_var.set(mission_data.get("spotting_charge", 0))
@@ -794,14 +821,16 @@ class MortarCalculatorApp(tk.Tk):
             self.creep_spread_slider.grid_remove()
             self.creep_spread_value_label.grid_remove()
 
-    def new_mission(self):
-        if messagebox.askyesno("New Mission", "This will clear all current mission data. Are you sure?"):
-            self.state.reset_inputs()
-            self.update_mortar_inputs()
-            self.clear_solution()
-            self.mission_log.clear_log()
-            self.state.last_coords = {}
-            self.map_view_widget.plot_positions()
+    def new_mission(self, confirm=True):
+        if confirm and not messagebox.askyesno("New Mission", "This will clear all current mission data. Are you sure?"):
+            return
+
+        self.state.reset_inputs()
+        self.update_mortar_inputs()
+        self.clear_solution()
+        self.mission_log.clear_log()
+        self.state.last_coords = {}
+        self.map_view_widget.plot_positions()
 
     def save_log_as(self):
         filepath = filedialog.asksaveasfilename(

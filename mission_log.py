@@ -86,6 +86,12 @@ class MissionLog:
         self.update_log_tree()
         self.save_log()
 
+    def clear_log(self):
+        """Clears all entries from the log."""
+        self.log_data = []
+        self.update_log_tree()
+        self.save_log()
+
     def get_log_data(self):
         return self.log_data
 

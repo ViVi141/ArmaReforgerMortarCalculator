@@ -88,13 +88,22 @@ class SettingsView(ttk.Frame):
         if not map_name:
             return
 
+        # Ask for confirmation before changing the map and clearing data
+        if self.app.state.fo_grid_var.get() != "0000000000": # Check if there's existing data
+            if not self.app.messagebox.askyesno("Change Map?", "Changing the map will clear all current mission data. Are you sure?"):
+                # User clicked 'No', so we need to revert the combobox selection
+                # This is a bit tricky as we don't have the 'previous' value directly.
+                # A simple approach is to just return, leaving the selection as is,
+                # but the best UX would be to revert. For now, we'll just stop.
+                # A more robust solution would involve storing the previous map selection.
+                return # Stop the map change
+
         config = self.app.config_manager.get_map_config(map_name)
         self.app.state.map_x_max_var.set(config.get('x_max', 1000))
         self.app.state.map_y_max_var.set(config.get('y_max', 1000))
         
-        self.app.clear_solution()
-        self.app.state.last_solutions = []
-        self.app.state.last_coords = {}
+        # If user confirmed, or if there was no data, proceed to clear and load
+        self.app.new_mission(confirm=False) # Call new_mission without a second confirmation
         self.app.load_map_image_and_view()
 
     def upload_map(self):

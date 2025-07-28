@@ -24,6 +24,8 @@ def worker_thread(task_queue, result_queue, app):
             result = process_task(task)
             result_queue.put(result)
         except Exception as e:
+            # Print the full traceback to the console for debugging
+            traceback.print_exc()
             # Pass exceptions back to the main thread to be handled
             result_queue.put(e)
         finally:
@@ -36,6 +38,7 @@ def process_task(task):
     Processes a single calculation task.
     """
     mission_type = task['mission_type']
+    faction = task['faction']
     ammo = task['ammo']
     creep_direction = task['creep_direction']
     creep_spread = task['creep_spread']
@@ -69,13 +72,13 @@ def process_task(task):
 
     # Dispatch to the correct calculation function based on mission type
     if mission_type == "Regular":
-        solutions = calculate_regular_mission(mortars, initial_target, ammo)
+        solutions = calculate_regular_mission(mortars, initial_target, faction, ammo)
     elif mission_type == "Small Barrage":
-        solutions = calculate_small_barrage(mortars, initial_target, ammo)
+        solutions = calculate_small_barrage(mortars, initial_target, faction, ammo)
     elif mission_type == "Large Barrage":
-        solutions = calculate_large_barrage(mortars, initial_target, ammo)
+        solutions = calculate_large_barrage(mortars, initial_target, faction, ammo)
     elif mission_type == "Creeping Barrage":
-        solutions = calculate_creeping_barrage(mortars, initial_target, creep_direction, ammo, creep_spread)
+        solutions = calculate_creeping_barrage(mortars, initial_target, creep_direction, faction, ammo, creep_spread)
     else:
         raise ValueError(f"Invalid mission type: {mission_type}")
 
