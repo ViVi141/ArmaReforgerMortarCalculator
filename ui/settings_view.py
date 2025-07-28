@@ -83,6 +83,11 @@ class SettingsView(ttk.Frame):
         self.hidden_button_label.place(relx=1.0, rely=1.0, anchor="se")
         self.hidden_button_label.bind("<Button-1>", self.prompt_for_admin_password)
 
+        # Developer
+        dev_frame = ttk.LabelFrame(self, text="Developer")
+        dev_frame.pack(fill="x", expand=True, pady=5)
+        ttk.Checkbutton(dev_frame, text="Enable Developer Logging", variable=self.app.state.dev_log_enabled).pack(pady=5, padx=5, anchor="w")
+
     def on_map_selected(self, event=None):
         map_name = self.app.state.selected_map_var.get()
         if not map_name:

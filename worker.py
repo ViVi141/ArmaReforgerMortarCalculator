@@ -38,6 +38,7 @@ def process_task(task):
     Processes a single calculation task.
     """
     mission_type = task['mission_type']
+    targeting_mode = task['targeting_mode']
     faction = task['faction']
     ammo = task['ammo']
     creep_direction = task['creep_direction']
@@ -64,11 +65,19 @@ def process_task(task):
         })
 
     # Calculate initial target coordinates
-    initial_target_easting, initial_target_northing = calculate_target_coords(
-        fo_grid_str, fo_azimuth_deg, fo_dist, fo_elev_diff, corr_lr, corr_ad
-    )
-    initial_target_elev = fo_elev + fo_elev_diff
-    initial_target = (initial_target_easting, initial_target_northing, initial_target_elev)
+    if targeting_mode == "Polar":
+        initial_target_easting, initial_target_northing = calculate_target_coords(
+            fo_grid_str, fo_azimuth_deg, fo_dist, fo_elev_diff, corr_lr, corr_ad
+        )
+        initial_target_elev = fo_elev + fo_elev_diff
+        initial_target = (initial_target_easting, initial_target_northing, initial_target_elev)
+    else: # Grid
+        # In Grid mode, the target coordinates are taken directly from the UI
+        # We need to get them from the task dictionary
+        target_grid_str = task['target_grid_str']
+        target_elev = task['target_elev']
+        target_easting, target_northing = parse_grid(target_grid_str)
+        initial_target = (target_easting, target_northing, target_elev)
 
     # Dispatch to the correct calculation function based on mission type
     if mission_type == "Regular":

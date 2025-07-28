@@ -14,6 +14,7 @@ class StateManager:
         self.selected_map_var = tk.StringVar()
         self.admin_mode_enabled = tk.BooleanVar(value=False)
         self.admin_target_pin = None
+        self.dev_log_enabled = tk.BooleanVar(value=False)
         self.faction_var = tk.StringVar(value="NATO")
 
         # Map State
@@ -27,6 +28,7 @@ class StateManager:
         
         self.num_mortars_var = tk.IntVar(value=1)
         self.fire_mission_type_var = tk.StringVar(value="Regular")
+        self.targeting_mode_var = tk.StringVar(value="Polar")
         
         # This list will hold dictionaries of tk.Variables for each mortar
         self.mortar_input_vars = []
@@ -39,6 +41,9 @@ class StateManager:
         self.fo_elev_diff_var = tk.DoubleVar(value=0)
         self.creep_direction_var = tk.DoubleVar(value=0)
         self.creep_spread_var = tk.DoubleVar(value=1.0)
+
+        self.trp_grid_var = tk.StringVar(value="0000000000")
+        self.trp_elev_var = tk.DoubleVar(value=100)
         
         self.corr_lr_var = tk.DoubleVar(value=0)
         self.corr_ad_var = tk.DoubleVar(value=0)
@@ -102,6 +107,9 @@ class StateManager:
         self.fo_elev_diff_var.set(0)
         self.creep_direction_var.set(0)
         self.creep_spread_var.set(1.0)
+
+        self.trp_grid_var.set("0000000000")
+        self.trp_elev_var.set(100)
         
         self.corr_lr_var.set(0)
         self.corr_ad_var.set(0)

@@ -24,6 +24,7 @@ from ui.map_view import MapView
 from ui.settings_view import SettingsView
 from ui.fire_mission_planner_view import FireMissionPlannerView
 from worker import worker_thread
+from dev_log import DevLog
 
 class CustomDialog(tk.Toplevel):
     def __init__(self, parent, title, message, is_dark_mode):
@@ -81,12 +82,14 @@ class MortarCalculatorApp(tk.Tk):
         self.style = ttk.Style(self)
         self.config_manager = ConfigManager()
         self.theme_manager = ThemeManager(self)
+        self.dev_log = DevLog()
         
         self.setup_ui()
         
         self.on_faction_change() # Set initial ammo and charge based on default faction
         self.theme_manager.apply_theme()
         self.after(100, self.post_init_load)
+        self.on_targeting_mode_change() # Set initial view
 
         # Setup worker thread and queues
         self.task_queue = queue.Queue()
@@ -126,9 +129,12 @@ class MortarCalculatorApp(tk.Tk):
         self.canvas.pack(side="left", fill="both", expand=True)
         self.scrollbar.pack(side="right", fill="y")
 
-        def _on_mousewheel(event):
-            self.canvas.yview_scroll(int(-1*(event.delta/120)), "units")
-        self.canvas.bind_all("<MouseWheel>", _on_mousewheel)
+        def _on_global_mousewheel(event):
+            # Check if the widget under the cursor is the map canvas or a child of it
+            widget_under_cursor = self.winfo_containing(event.x_root, event.y_root)
+            if widget_under_cursor != self.map_view_widget.graph_canvas and not isinstance(widget_under_cursor, ttk.Combobox):
+                self.canvas.yview_scroll(int(-1*(event.delta/120)), "units")
+        self.bind_all("<MouseWheel>", _on_global_mousewheel)
 
         self.notebook.add(main_tab_frame, text="Main")
         self.notebook.add(self.fire_mission_planner_tab, text="Fire Mission Planner")
@@ -194,6 +200,13 @@ class MortarCalculatorApp(tk.Tk):
         # --- Center Frame for Mission Type ---
         center_fm_frame = ttk.Frame(fire_mission_frame)
         center_fm_frame.pack(expand=True, pady=5)
+
+        # --- Targeting Mode ---
+        targeting_mode_frame = ttk.Frame(center_fm_frame)
+        targeting_mode_frame.grid(row=0, column=2, sticky="ns", pady=2, padx=20)
+        ttk.Label(targeting_mode_frame, text="Targeting Mode:").pack(anchor="w")
+        ttk.Radiobutton(targeting_mode_frame, text="Polar (FO)", variable=self.state.targeting_mode_var, value="Polar", command=self.on_targeting_mode_change).pack(anchor="w")
+        ttk.Radiobutton(targeting_mode_frame, text="Grid (TRP)", variable=self.state.targeting_mode_var, value="Grid", command=self.on_targeting_mode_change).pack(anchor="w")
         
         ttk.Label(center_fm_frame, text="Mission Type:").grid(row=0, column=0, sticky="ns", pady=2, rowspan=2)
         
@@ -206,33 +219,44 @@ class MortarCalculatorApp(tk.Tk):
         ttk.Radiobutton(mission_type_grid, text=mission_types[1], variable=self.state.fire_mission_type_var, value=mission_types[1], command=self.on_mission_type_change).grid(row=0, column=1, sticky="w")
         ttk.Radiobutton(mission_type_grid, text=mission_types[2], variable=self.state.fire_mission_type_var, value=mission_types[2], command=self.on_mission_type_change).grid(row=1, column=1, sticky="w")
 
-        fo_frame = ttk.LabelFrame(input_frame, text="3. Forward Observer (FO) Data")
-        fo_frame.pack(fill="x", expand=True, pady=5)
+        # --- Targeting Data Frame (Container for FO and TRP) ---
+        targeting_data_frame = ttk.LabelFrame(input_frame, text="3. Targeting Data")
+        targeting_data_frame.pack(fill="x", expand=True, pady=5)
 
-        ttk.Label(fo_frame, text="FO 10-Digit Grid:").grid(row=0, column=0, padx=5, pady=2, sticky="w")
-        ttk.Entry(fo_frame, textvariable=self.state.fo_grid_var, width=12).grid(row=0, column=1, padx=5, pady=2)
-        ttk.Label(fo_frame, text="FO Elevation (m):").grid(row=0, column=2, padx=5, pady=2, sticky="w")
-        ttk.Entry(fo_frame, textvariable=self.state.fo_elev_var, width=7).grid(row=0, column=3, padx=5, pady=2)
-        ttk.Label(fo_frame, text="FO ID:").grid(row=0, column=4, padx=5, pady=2, sticky="w")
-        ttk.Entry(fo_frame, textvariable=self.state.fo_id_var, width=12).grid(row=0, column=5, padx=5, pady=2)
-        ttk.Label(fo_frame, text="Azimuth to Target (Degrees):").grid(row=1, column=0, padx=5, pady=2, sticky="w")
-        ttk.Entry(fo_frame, textvariable=self.state.fo_azimuth_var, width=7).grid(row=1, column=1, padx=5, pady=2)
-        ttk.Label(fo_frame, text="Distance to Target (m):").grid(row=1, column=2, padx=5, pady=2, sticky="w")
-        ttk.Entry(fo_frame, textvariable=self.state.fo_dist_var, width=7).grid(row=1, column=3, padx=5, pady=2)
-        ttk.Label(fo_frame, text="Elev. Change to Target (m):").grid(row=2, column=0, padx=5, pady=2, sticky="w")
-        ttk.Entry(fo_frame, textvariable=self.state.fo_elev_diff_var, width=7).grid(row=2, column=1, padx=5, pady=2)
+        self.fo_frame = ttk.LabelFrame(targeting_data_frame, text="Forward Observer (FO) Data")
+        # self.fo_frame is packed in on_targeting_mode_change
+
+        ttk.Label(self.fo_frame, text="FO 10-Digit Grid:").grid(row=0, column=0, padx=5, pady=2, sticky="w")
+        ttk.Entry(self.fo_frame, textvariable=self.state.fo_grid_var, width=12).grid(row=0, column=1, padx=5, pady=2)
+        ttk.Label(self.fo_frame, text="FO Elevation (m):").grid(row=0, column=2, padx=5, pady=2, sticky="w")
+        ttk.Entry(self.fo_frame, textvariable=self.state.fo_elev_var, width=7).grid(row=0, column=3, padx=5, pady=2)
+        ttk.Label(self.fo_frame, text="FO ID:").grid(row=0, column=4, padx=5, pady=2, sticky="w")
+        ttk.Entry(self.fo_frame, textvariable=self.state.fo_id_var, width=12).grid(row=0, column=5, padx=5, pady=2)
+        ttk.Label(self.fo_frame, text="Azimuth to Target (Degrees):").grid(row=1, column=0, padx=5, pady=2, sticky="w")
+        ttk.Entry(self.fo_frame, textvariable=self.state.fo_azimuth_var, width=7).grid(row=1, column=1, padx=5, pady=2)
+        ttk.Label(self.fo_frame, text="Distance to Target (m):").grid(row=1, column=2, padx=5, pady=2, sticky="w")
+        ttk.Entry(self.fo_frame, textvariable=self.state.fo_dist_var, width=7).grid(row=1, column=3, padx=5, pady=2)
+        ttk.Label(self.fo_frame, text="Elev. Change to Target (m):").grid(row=2, column=0, padx=5, pady=2, sticky="w")
+        ttk.Entry(self.fo_frame, textvariable=self.state.fo_elev_diff_var, width=7).grid(row=2, column=1, padx=5, pady=2)
         
-        self.creep_direction_label = ttk.Label(fo_frame, text="Creep Direction (Degrees):")
+        self.creep_direction_label = ttk.Label(self.fo_frame, text="Creep Direction (Degrees):")
         self.creep_direction_label.grid(row=2, column=2, padx=5, pady=2, sticky="w")
-        self.creep_direction_entry = ttk.Entry(fo_frame, textvariable=self.state.creep_direction_var, width=7)
+        self.creep_direction_entry = ttk.Entry(self.fo_frame, textvariable=self.state.creep_direction_var, width=7)
         self.creep_direction_entry.grid(row=2, column=3, padx=5, pady=2)
 
-        self.creep_spread_label = ttk.Label(fo_frame, text="Creep Spread (x):")
+        self.creep_spread_label = ttk.Label(self.fo_frame, text="Creep Spread (x):")
         self.creep_spread_label.grid(row=3, column=0, padx=5, pady=2, sticky="w")
-        self.creep_spread_slider = ttk.Scale(fo_frame, from_=0.5, to=2.0, orient="horizontal", variable=self.state.creep_spread_var)
+        self.creep_spread_slider = ttk.Scale(self.fo_frame, from_=0.5, to=2.0, orient="horizontal", variable=self.state.creep_spread_var)
         self.creep_spread_slider.grid(row=3, column=1, padx=5, pady=2, sticky="ew")
-        self.creep_spread_value_label = ttk.Label(fo_frame, textvariable=self.state.creep_spread_var)
+        self.creep_spread_value_label = ttk.Label(self.fo_frame, textvariable=self.state.creep_spread_var)
         self.creep_spread_value_label.grid(row=3, column=2, padx=5, pady=2, sticky="w")
+
+        self.trp_frame = ttk.LabelFrame(targeting_data_frame, text="Target Reference Point (TRP) Data")
+        # self.trp_frame is packed in on_targeting_mode_change
+        ttk.Label(self.trp_frame, text="Target 10-Digit Grid:").grid(row=0, column=0, padx=5, pady=2, sticky="w")
+        ttk.Entry(self.trp_frame, textvariable=self.state.trp_grid_var, width=12).grid(row=0, column=1, padx=5, pady=2)
+        ttk.Label(self.trp_frame, text="Target Elevation (m):").grid(row=0, column=2, padx=5, pady=2, sticky="w")
+        ttk.Entry(self.trp_frame, textvariable=self.state.trp_elev_var, width=7).grid(row=0, column=3, padx=5, pady=2)
 
         corr_frame = ttk.LabelFrame(input_frame, text="4. Fire Mission Corrections (Optional)")
         corr_frame.pack(fill="x", expand=True, pady=5)
@@ -246,11 +270,12 @@ class MortarCalculatorApp(tk.Tk):
 
 
         self.quick_fire_frame = ttk.LabelFrame(input_frame, text="Quick Fire Data")
-        self.quick_fire_frame.pack(fill="x", expand=True, pady=5)
         
         self.danger_close_label = ttk.Label(self.quick_fire_frame, text="DANGER CLOSE FIRE MISSION", style="DangerClose.TLabel")
         self.danger_close_label.grid(row=0, column=2, rowspan=3, padx=20)
         self.danger_close_label.grid_remove()
+        
+        self.quick_fire_frame.pack(fill="x", expand=True, pady=5)
 
 
     def setup_fire_mission_planner_tab(self):
@@ -439,6 +464,15 @@ class MortarCalculatorApp(tk.Tk):
         for widget in widgets.values():
             widget.config(state=state)
 
+    def on_targeting_mode_change(self):
+        """Shows or hides UI elements based on the selected targeting mode."""
+        if self.state.targeting_mode_var.get() == "Polar":
+            self.trp_frame.pack_forget()
+            self.fo_frame.pack(fill="x", expand=True, padx=5, pady=5)
+        else: # Grid
+            self.fo_frame.pack_forget()
+            self.trp_frame.pack(fill="x", expand=True, padx=5, pady=5)
+
     def on_faction_change(self):
         """Updates the ammunition dropdown based on the selected faction."""
         selected_faction = self.state.faction_var.get()
@@ -496,6 +530,7 @@ class MortarCalculatorApp(tk.Tk):
 
             task = {
                 'mission_type': self.state.fire_mission_type_var.get(),
+                'targeting_mode': self.state.targeting_mode_var.get(),
                 'faction': self.state.faction_var.get(),
                 'ammo': self.state.ammo_type_var.get(),
                 'creep_direction': self.state.creep_direction_var.get(),
@@ -507,7 +542,9 @@ class MortarCalculatorApp(tk.Tk):
                 'fo_elev_diff': self.state.fo_elev_diff_var.get(),
                 'corr_lr': self.state.corr_lr_var.get(),
                 'corr_ad': self.state.corr_ad_var.get(),
-                'mortars': mortars_data
+                'mortars': mortars_data,
+                'target_grid_str': self.state.trp_grid_var.get(),
+                'target_elev': self.state.trp_elev_var.get()
             }
             self.task_queue.put(task)
         except Exception as e:
@@ -696,6 +733,8 @@ class MortarCalculatorApp(tk.Tk):
     def handle_calculation_error(self, e):
         self.clear_solution(clear_error=True) # Clear previous solution before showing error
         self.state.correction_status_var.set(f"Error: {e}")
+        if self.state.dev_log_enabled.get():
+            self.dev_log.write_log(e)
         self.state.quick_azimuth_var.set("---- MIL")
         self.state.quick_least_tof_elev_var.set("C-: ---- MIL")
         self.state.quick_most_tof_elev_var.set("C-: ---- MIL")
@@ -716,11 +755,14 @@ class MortarCalculatorApp(tk.Tk):
         self.state.quick_most_tof_elev_var.set("C-: ---- MIL")
 
     def get_current_mission_data_for_log(self):
-        try:
-            target_easting, target_northing = calculate_target_coords(self.state.fo_grid_var.get(), self.state.fo_azimuth_var.get(), self.state.fo_dist_var.get(), self.state.fo_elev_diff_var.get(), self.state.corr_lr_var.get(), self.state.corr_ad_var.get())
-            calculated_target_grid = f"{int(round(target_easting)):05d} {int(round(target_northing)):05d}"
-        except Exception:
-            calculated_target_grid = "Calculation Error"
+        if self.state.targeting_mode_var.get() == "Grid":
+            calculated_target_grid = self.state.trp_grid_var.get()
+        else:
+            try:
+                target_easting, target_northing = calculate_target_coords(self.state.fo_grid_var.get(), self.state.fo_azimuth_var.get(), self.state.fo_dist_var.get(), self.state.fo_elev_diff_var.get(), self.state.corr_lr_var.get(), self.state.corr_ad_var.get())
+                calculated_target_grid = f"{int(round(target_easting)):05d} {int(round(target_northing)):05d}"
+            except Exception:
+                calculated_target_grid = "Calculation Error"
         return {
             "target_name": self.mission_log.target_name_var.get(),
             "mortars": [
@@ -733,6 +775,7 @@ class MortarCalculatorApp(tk.Tk):
             ],
             "num_mortars": self.state.num_mortars_var.get(),
             "fire_mission_type": self.state.fire_mission_type_var.get(),
+            "targeting_mode": self.state.targeting_mode_var.get(),
             "fo_grid": self.state.fo_grid_var.get(),
             "fo_elev": self.state.fo_elev_var.get(),
             "fo_id": self.state.fo_id_var.get(),
@@ -746,7 +789,9 @@ class MortarCalculatorApp(tk.Tk):
             "ammo": self.state.ammo_type_var.get(),
             "calculated_target_grid": calculated_target_grid,
             "mortar_to_target_azimuth": self.state.mortar_to_target_azimuth_var.get(),
-            "mortar_to_target_dist": self.state.mortar_to_target_dist_var.get()
+            "mortar_to_target_dist": self.state.mortar_to_target_dist_var.get(),
+            "target_grid_str": self.state.trp_grid_var.get(),
+            "target_elev": self.state.trp_elev_var.get()
         }
 
     def load_mission_data_from_log(self, mission_data):
@@ -765,6 +810,8 @@ class MortarCalculatorApp(tk.Tk):
             self.toggle_mortar_lock(i)
 
         self.state.fire_mission_type_var.set("Regular") # Default to Regular on load
+        self.state.targeting_mode_var.set(mission_data.get("targeting_mode", "Polar"))
+        self.on_targeting_mode_change()
         self.state.fo_grid_var.set(mission_data.get("fo_grid", ""))
         self.state.fo_elev_var.set(mission_data.get("fo_elev", 0))
         self.state.fo_id_var.set(mission_data.get("fo_id", ""))
@@ -778,6 +825,11 @@ class MortarCalculatorApp(tk.Tk):
         self.state.ammo_type_var.set(mission_data.get("ammo", ""))
         self.update_charge_options()
         self.state.spotting_charge_var.set(mission_data.get("spotting_charge", 0))
+        if mission_data.get("targeting_mode") == "Grid":
+            self.state.trp_grid_var.set(mission_data.get("calculated_target_grid", "0000000000"))
+        else:
+            self.state.trp_grid_var.set("0000000000")
+        self.state.trp_elev_var.set(mission_data.get("target_elev", 100))
         
         self.clear_solution()
         self.state.last_solutions = []
