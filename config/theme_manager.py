@@ -1,12 +1,13 @@
 import json
 import os
 from tkinter import messagebox
+from utils import resource_path
 
 class ThemeManager:
     def __init__(self, app):
         self.app = app
         self.theme_config = {}
-        self.theme_config_path = os.path.join(self.app.config_manager.app_dir, 'theme_config.json')
+        self.theme_config_path = resource_path('theme_config.json')
         self._initialize_theme()
 
     def _initialize_theme(self):

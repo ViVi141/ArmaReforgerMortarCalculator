@@ -3,22 +3,16 @@ import sys
 import json
 import shutil
 from tkinter import messagebox
+from utils import resource_path
 
 class ConfigManager:
     def __init__(self):
-        self.app_dir = self._get_app_dir()
-        self.maps_dir = os.path.join(self.app_dir, 'maps')
-        self.config_path = os.path.join(self.app_dir, 'maps_config.json')
-        self.log_file_path = os.path.join(self.app_dir, 'fire_missions.json')
+        self.maps_dir = resource_path('maps')
+        self.config_path = resource_path('maps_config.json')
+        self.log_file_path = resource_path('fire_missions.json')
         self.maps_config = {}
         self._initialize()
 
-    def _get_app_dir(self):
-        if getattr(sys, 'frozen', False):
-            return sys._MEIPASS
-        else:
-            # This assumes config_manager.py is in a 'config' subdirectory.
-            return os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
     def _initialize(self):
         if not os.path.exists(self.maps_dir):
