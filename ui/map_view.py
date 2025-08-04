@@ -60,7 +60,10 @@ class MapView(ttk.Frame):
             return x, y, scale
 
         # 3. Draw Pins and Overlays
-        if self.app.state.last_solutions:
+        # 3. Draw Pins and Overlays
+        if self.app.state.last_coords.get('trp_targets'):
+            self._plot_trp_targets(transform, target_color)
+        elif self.app.state.last_solutions:
             self._plot_solution_pins(transform, mortar_colors, fo_color, canvas_width, canvas_height)
         elif self.show_saved_target_var.get():
             self._plot_logged_targets(transform)
@@ -109,14 +112,31 @@ class MapView(ttk.Frame):
         num_mortars = len(solutions)
         
         for i in range(num_mortars):
-            mortar_e, mortar_n = solutions[i]['mortar_coords']
+            sol = solutions[i]
+            if sol.get('error'): # Skip plotting if this mortar has an error
+                continue
+
+            # Access mortar_coords defensively
+            mortar_coords = sol.get('mortar', {}).get('coords', None)
+            if mortar_coords is None: # Skip if coords are still missing
+                continue
+
+            mortar_e, mortar_n = mortar_coords
             mortar_x, mortar_y, _ = transform(mortar_e, mortar_n)
             self.graph_canvas.create_oval(mortar_x-5, mortar_y-5, mortar_x+5, mortar_y+5, fill=mortar_colors[i], outline="black")
             self.graph_canvas.create_text(mortar_x, mortar_y - 15, text=f"Gun {i+1}", fill="black")
 
-        fo_x, fo_y, _ = transform(solutions[0]['fo_coords'][0], solutions[0]['fo_coords'][1])
+        # Get FO coordinates from app state, not from individual solutions
+        # Import parse_grid if not already imported
+        from calculations import parse_grid
         
-        if not (self.app.state.admin_mode_enabled.get() and self.app.state.admin_target_pin):
+        fo_grid_str = self.app.state.fo_grid_var.get()
+        fo_easting, fo_northing = parse_grid(fo_grid_str)
+        
+        fo_x, fo_y, _ = transform(fo_easting, fo_northing)
+        
+        # Only plot FO if not in Grid (TRP) targeting mode
+        if self.app.state.targeting_mode_var.get() != "Grid" and not (self.app.state.admin_mode_enabled.get() and self.app.state.admin_target_pin):
             self.graph_canvas.create_oval(fo_x-5, fo_y-5, fo_x+5, fo_y+5, fill=fo_color, outline="black")
             self.graph_canvas.create_text(fo_x, fo_y - 15, text="FO", fill="black")
 
@@ -130,21 +150,26 @@ class MapView(ttk.Frame):
             self._plot_creeping_barrage(solutions, transform, mortar_colors)
 
     def _plot_regular_mission(self, solutions, transform, mortar_colors, canvas_width, canvas_height):
-        target_e, target_n = solutions[0]['target_coords']
+        # Filter out solutions with errors for plotting dispersion circles
+        valid_solutions = [s for s in solutions if not s.get('error')]
+        if not valid_solutions:
+            return # Nothing to plot if no valid solutions
+ 
+        target_e, target_n = valid_solutions[0]['target_coords'][:2] # Unpack only easting and northing
         target_x, target_y, scale = transform(target_e, target_n)
-
-        min_disp_radius = min(sol['least_tof']['dispersion'] for sol in solutions)
-        max_disp_radius = max(sol['most_tof']['dispersion'] for sol in solutions)
+ 
+        min_disp_radius = min(sol['least_tof']['dispersion'] for sol in valid_solutions)
+        max_disp_radius = max(sol['most_tof']['dispersion'] for sol in valid_solutions)
         scaled_min_disp = min_disp_radius * scale
         scaled_max_disp = max_disp_radius * scale
-
+ 
         if scaled_max_disp > scaled_min_disp:
             self.graph_canvas.create_oval(target_x - scaled_max_disp, target_y - scaled_max_disp, target_x + scaled_max_disp, target_y + scaled_max_disp, outline="yellow", width=2)
         if scaled_min_disp > 0:
             self.graph_canvas.create_oval(target_x - scaled_min_disp, target_y - scaled_min_disp, target_x + scaled_min_disp, target_y + scaled_min_disp, outline="red", width=2)
-
+ 
         target_label = self.app.state.loaded_target_name.get() or "Target"
-        for i, sol in enumerate(solutions):
+        for i, sol in enumerate(valid_solutions): # Iterate only valid solutions for target pins
             self.graph_canvas.create_oval(target_x - 10, target_y - 10, target_x + 10, target_y + 10, outline=mortar_colors[i], width=2)
             self.graph_canvas.create_polygon(target_x, target_y-7, target_x-7, target_y+7, target_x+7, target_y+7, fill=mortar_colors[i], outline="black")
         self.graph_canvas.create_text(target_x, target_y + 15, text=target_label, fill="black")
@@ -157,10 +182,14 @@ class MapView(ttk.Frame):
         self.graph_canvas.create_text(legend_x + 30, legend_y + 35, text="Expected Injury Area", anchor="w", fill="black")
 
     def _plot_barrage_mission(self, solutions, transform, mortar_colors):
-        sol = solutions[0]
-        target_e, target_n = sol['target_coords']
+        valid_solutions = [s for s in solutions if not s.get('error')]
+        if not valid_solutions:
+            return
+ 
+        sol = valid_solutions[0]
+        target_e, target_n = sol['target_coords'][:2] # Unpack only easting and northing
         target_x, target_y, scale = transform(target_e, target_n)
-        for i, sol_i in enumerate(solutions):
+        for i, sol_i in enumerate(valid_solutions):
             self.graph_canvas.create_oval(target_x - 10, target_y - 10, target_x + 10, target_y + 10, outline=mortar_colors[i], width=2)
             self.graph_canvas.create_polygon(target_x, target_y-7, target_x-7, target_y+7, target_x+7, target_y+7, fill=mortar_colors[i], outline="black")
         self.graph_canvas.create_text(target_x, target_y + 15, text="Target", fill="black")
@@ -169,35 +198,39 @@ class MapView(ttk.Frame):
         self.graph_canvas.create_oval(target_x - disp, target_y - disp, target_x + disp, target_y + disp, outline="red", width=2)
 
     def _plot_creeping_barrage(self, solutions, transform, mortar_colors):
-        first_target = solutions[0]['target_coords']
-        last_target = solutions[-1]['target_coords']
-        dispersion = solutions[0]['least_tof']['dispersion']
+        valid_solutions = [s for s in solutions if not s.get('error')]
+        if not valid_solutions:
+            return
+ 
+        first_target_e, first_target_n = valid_solutions[0]['target_coords'][:2] # Unpack only easting and northing
+        last_target_e, last_target_n = valid_solutions[-1]['target_coords'][:2] # Unpack only easting and northing
+        dispersion = valid_solutions[0]['least_tof']['dispersion']
         
-        for i, sol in enumerate(solutions):
-            target_e, target_n = sol['target_coords']
+        for i, sol in enumerate(valid_solutions):
+            target_e, target_n = sol['target_coords'][:2] # Unpack only easting and northing
             target_x, target_y, _ = transform(target_e, target_n)
             self.graph_canvas.create_oval(target_x - 10, target_y - 10, target_x + 10, target_y + 10, outline=mortar_colors[i], width=2)
             self.graph_canvas.create_polygon(target_x, target_y-7, target_x-7, target_y+7, target_x+7, target_y+7, fill=mortar_colors[i], outline="black")
             self.graph_canvas.create_text(target_x, target_y + 15, text=f"Target {i+1}", fill="black")
-
-        creep_vec_e = last_target[0] - first_target[0]
-        creep_vec_n = last_target[1] - first_target[1]
+ 
+        creep_vec_e = last_target_e - first_target_e
+        creep_vec_n = last_target_n - first_target_n
         
         if creep_vec_e == 0 and creep_vec_n == 0:
             creep_angle_rad = 0
         else:
             creep_angle_rad = math.atan2(creep_vec_e, creep_vec_n)
-
+ 
         perp_angle_rad = creep_angle_rad + math.pi / 2
         
         _, _, scale = transform(0,0) # Get scale
         radius_scaled = dispersion * scale
-
-        start_e = first_target[0] - dispersion * math.sin(creep_angle_rad)
-        start_n = first_target[1] - dispersion * math.cos(creep_angle_rad)
-        end_e = last_target[0] + dispersion * math.sin(creep_angle_rad)
-        end_n = last_target[1] + dispersion * math.cos(creep_angle_rad)
-
+ 
+        start_e = first_target_e - dispersion * math.sin(creep_angle_rad)
+        start_n = first_target_n - dispersion * math.cos(creep_angle_rad)
+        end_e = last_target_e + dispersion * math.sin(creep_angle_rad)
+        end_n = last_target_n + dispersion * math.cos(creep_angle_rad)
+ 
         p1_x, p1_y, _ = transform(start_e - dispersion * math.sin(perp_angle_rad), start_n - dispersion * math.cos(perp_angle_rad))
         p2_x, p2_y, _ = transform(start_e + dispersion * math.sin(perp_angle_rad), start_n + dispersion * math.cos(perp_angle_rad))
         p3_x, p3_y, _ = transform(end_e + dispersion * math.sin(perp_angle_rad), end_n + dispersion * math.cos(perp_angle_rad))
@@ -222,6 +255,16 @@ class MapView(ttk.Frame):
         self.graph_canvas.create_polygon(placeholder_x, target_y - 7, placeholder_x - 7, target_y + 7, placeholder_x + 7, target_y + 7, fill=target_color, outline="black")
         self.graph_canvas.create_text(placeholder_x + 25, target_y, text="Target", fill=text_color, anchor="w")
 
+
+    def _plot_trp_targets(self, transform_func, target_color):
+        """Plots all TRP targets from the last batch calculation on the map."""
+        trp_targets = self.app.state.last_coords.get('trp_targets', [])
+        for target_e, target_n in trp_targets:
+            target_x, target_y, _ = transform_func(target_e, target_n)
+            # Draw a distinct marker for TRP targets (e.g., a small cross or square)
+            self.graph_canvas.create_line(target_x - 5, target_y - 5, target_x + 5, target_y + 5, fill=target_color, width=2)
+            self.graph_canvas.create_line(target_x - 5, target_y + 5, target_x + 5, target_y - 5, fill=target_color, width=2)
+            self.graph_canvas.create_text(target_x, target_y + 15, text="TRP", fill=target_color)
 
     def _plot_logged_targets(self, transform_func):
         """Plots all targets from the mission log on the map."""
@@ -326,10 +369,20 @@ class MapView(ttk.Frame):
         if not self.app.state.last_coords:
             return
 
-        coords = self.app.state.last_coords.get('mortars', []) + [
-            (self.app.state.last_coords['fo_e'], self.app.state.last_coords['fo_n']),
-            (self.app.state.last_coords['target_e'], self.app.state.last_coords['target_n'])
-        ]
+        coords = []
+        # Add mortar coordinates if available
+        coords.extend(self.app.state.last_coords.get('mortars', []))
+        # Add FO coordinates if available and not None
+        if self.app.state.last_coords.get('fo_e') is not None and self.app.state.last_coords.get('fo_n') is not None:
+            coords.append((self.app.state.last_coords['fo_e'], self.app.state.last_coords['fo_n']))
+        # Add single target coordinates if available and not None
+        if self.app.state.last_coords.get('target_e') is not None and self.app.state.last_coords.get('target_n') is not None:
+            coords.append((self.app.state.last_coords['target_e'], self.app.state.last_coords['target_n']))
+        # Add TRP targets if available
+        coords.extend(self.app.state.last_coords.get('trp_targets', []))
+
+        # Filter out any remaining None values or invalid coordinates
+        coords = [c for c in coords if c is not None and len(c) == 2 and all(isinstance(val, (int, float)) for val in c)]
 
         min_e = min(c[0] for c in coords)
         max_e = max(c[0] for c in coords)

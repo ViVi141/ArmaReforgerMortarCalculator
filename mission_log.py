@@ -69,6 +69,20 @@ class MissionLog:
             self.update_log_tree()
             self.save_log()
 
+    def add_trp_batch_log(self, trp_results):
+        """Adds a batch of TRP calculation results to the log."""
+        # Each item in trp_results is a dictionary containing TRP details and calculation status
+        for result in trp_results:
+            self.log_data.append({"type": "TRP_BATCH_RESULT", "data": result})
+        self.update_log_tree()
+        self.save_log()
+
+    def log_mission_data_directly(self, mission_data):
+        """Logs a pre-formatted mission data dictionary directly to the log."""
+        self.log_data.append(mission_data)
+        self.update_log_tree()
+        self.save_log()
+
     def load_selected_mission(self):
         selected_item = self.log_tree.selection()
         if not selected_item: return
@@ -86,11 +100,13 @@ class MissionLog:
         self.update_log_tree()
         self.save_log()
 
-    def clear_log(self):
-        """Clears all entries from the log."""
+    def clear_log(self, save_to_disk=True):
+        """Clears all entries from the log.
+        If save_to_disk is False, the log file is not immediately updated."""
         self.log_data = []
         self.update_log_tree()
-        self.save_log()
+        if save_to_disk:
+            self.save_log()
 
     def get_log_data(self):
         return self.log_data
@@ -129,32 +145,54 @@ class MissionLog:
         self.log_tree.delete(*self.log_tree.get_children())
         self.logged_target_coords.clear()
 
-        for mission in self.log_data:
-            target_name = mission.get("target_name", "")
-            grid_str = mission.get("calculated_target_grid", "")
-            
-            # Attempt to parse the grid to store coordinates for map plotting
-            try:
-                from calculations import parse_grid # Local import to avoid circular dependency
-                easting, northing = parse_grid(grid_str)
-                self.logged_target_coords.append({"name": target_name, "coords": (easting, northing)})
-            except (ValueError, TypeError):
-                pass # Ignore missions with invalid grids
+        for entry in self.log_data:
+            if entry.get("type") == "TRP_BATCH_RESULT":
+                trp_result = entry.get("data", {})
+                target_name = trp_result.get("TRP Name", "")
+                status = trp_result.get("Status", "")
+                target_grid = trp_result.get("Target Grid", "")
+                
+                # For TRP batch results, we'll display a simplified view
+                display_values = (
+                    target_name,
+                    target_grid,
+                    trp_result.get("Ammo", ""), # This might not be present for out-of-range
+                    trp_result.get("Mortar-Target Azimuth", ""),
+                    trp_result.get("Mortar-Target Distance", ""),
+                    "", # No specific mortar callsign for batch TRP
+                    status # Display status here
+                )
+                self.log_tree.insert("", "end", values=display_values, tags=('trp_batch',))
+            else:
+                # Existing mission log entry
+                target_name = entry.get("target_name", "")
+                grid_str = entry.get("calculated_target_grid", "")
+                
+                # Attempt to parse the grid to store coordinates for map plotting
+                try:
+                    from calculations import parse_grid # Local import to avoid circular dependency
+                    easting, northing = parse_grid(grid_str)
+                    self.logged_target_coords.append({"name": target_name, "coords": (easting, northing)})
+                except (ValueError, TypeError):
+                    pass # Ignore missions with invalid grids
 
-            # Correctly extract the callsign from the nested data structure
-            mortars = mission.get("mortars", [])
-            callsign = mortars[0].get("callsign", "") if mortars else ""
+                # Correctly extract the callsign from the nested data structure
+                mortars = entry.get("mortars", [])
+                callsign = mortars[0].get("callsign", "") if mortars else ""
 
-            display_values = (
-                target_name,
-                grid_str,
-                mission.get("ammo", ""),
-                mission.get("mortar_to_target_azimuth", ""),
-                mission.get("mortar_to_target_dist", ""),
-                callsign,
-                mission.get("fo_id", "")
-            )
-            self.log_tree.insert("", "end", values=display_values)
+                display_values = (
+                    target_name,
+                    grid_str,
+                    entry.get("ammo", ""),
+                    entry.get("mortar_to_target_azimuth", ""),
+                    entry.get("mortar_to_target_dist", ""),
+                    callsign,
+                    entry.get("fo_id", "")
+                )
+                self.log_tree.insert("", "end", values=display_values)
+        
+        # Apply tag styling for TRP batch results
+        self.log_tree.tag_configure('trp_batch', background='#e0e0e0' if not self.app.is_dark_mode else '#3a3a3a')
 
         # Re-attach scrollbar and force UI update
         if hasattr(self, 'scrollbar'):

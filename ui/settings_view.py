@@ -1,5 +1,5 @@
 import tkinter as tk
-from tkinter import ttk, filedialog, simpledialog, PhotoImage
+from tkinter import ttk, filedialog, simpledialog, messagebox, PhotoImage
 
 class SettingsView(ttk.Frame):
     def __init__(self, parent, app):
@@ -95,7 +95,7 @@ class SettingsView(ttk.Frame):
 
         # Ask for confirmation before changing the map and clearing data
         if self.app.state.fo_grid_var.get() != "0000000000": # Check if there's existing data
-            if not self.app.messagebox.askyesno("Change Map?", "Changing the map will clear all current mission data. Are you sure?"):
+            if not messagebox.askyesno("Change Map?", "Changing the map will clear all current mission data. Are you sure?"):
                 # User clicked 'No', so we need to revert the combobox selection
                 # This is a bit tricky as we don't have the 'previous' value directly.
                 # A simple approach is to just return, leaving the selection as is,

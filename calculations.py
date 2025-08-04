@@ -7,21 +7,20 @@ def interpolate(x, x1, y1, x2, y2):
         return y1
     return y1 + (x - x1) * (y2 - y1) / (x2 - x1)
 
-def parse_grid(grid_str, digits=10):
+def parse_grid(grid_str):
     """Parses an 8 or 10 digit grid string into easting and northing."""
     grid_str = grid_str.replace(" ", "")
-    half = len(grid_str) // 2
-    if len(grid_str) != digits:
-        raise ValueError(f"Grid must be {digits} digits")
     
-    if digits == 8:
+    if len(grid_str) == 8:
+        half = len(grid_str) // 2
         easting = int(grid_str[:half]) * 10
         northing = int(grid_str[half:]) * 10
-    elif digits == 10:
+    elif len(grid_str) == 10:
+        half = len(grid_str) // 2
         easting = int(grid_str[:half])
         northing = int(grid_str[half:])
     else:
-        raise ValueError("Grid must be 8 or 10 digits")
+        raise ValueError(f"Grid must be 8 or 10 digits, but got {len(grid_str)} digits.")
         
     return easting, northing
 
@@ -30,7 +29,7 @@ def calculate_target_coords(fo_grid_str, fo_azimuth_deg, fo_dist, fo_elev_diff, 
     Calculates the target's coordinates based on FO data and corrections.
     This version uses vector addition for a more accurate calculation.
     """
-    fo_easting, fo_northing = parse_grid(fo_grid_str, digits=10)
+    fo_easting, fo_northing = parse_grid(fo_grid_str)
     azimuth_rad = math.radians(fo_azimuth_deg)
     
     initial_target_easting = fo_easting + fo_dist * math.sin(azimuth_rad)
@@ -168,56 +167,78 @@ def calculate_new_fo_data(fo_coords, target_coords):
     return new_azimuth_deg, new_dist
 
 def calculate_regular_mission(mortars, target_coords, faction, ammo):
-    """Calculates a regular fire mission for one or more mortars."""
-    solutions = []
+    """Calculates a regular fire mission for one or more mortars,
+    returning results for each mortar, including error status if no solution."""
+    mortar_results = []
     for mortar in mortars:
-        mortar_e, mortar_n = mortar['coords']
-        target_e, target_n, target_elev = target_coords
-        elev_diff = target_elev - mortar['elev']
-        
-        dist = math.sqrt((target_e - mortar_e)**2 + (target_n - mortar_n)**2)
-        
-        valid_solutions = find_valid_solutions(faction, ammo, dist, elev_diff)
-        if not valid_solutions:
-            raise ValueError(f"No valid solution for {mortar.get('callsign', 'gun')}")
-            
-        valid_solutions.sort(key=lambda x: x['tof'])
-        
-        least_tof_solution = valid_solutions[0]
-        # Find a most_tof solution that is distinct from the least_tof one
-        most_tof_solution = next((s for s in reversed(valid_solutions) if s['charge'] != least_tof_solution['charge']), least_tof_solution)
-
-        solutions.append({
+        result_for_mortar = {
             "mortar": mortar,
             "target_coords": target_coords,
-            "least_tof": least_tof_solution,
-            "most_tof": most_tof_solution
-        })
-    return solutions
+            "least_tof": None,
+            "most_tof": None,
+            "error": None
+        }
+        try:
+            mortar_e, mortar_n = mortar['coords']
+            target_e, target_n, target_elev = target_coords
+            elev_diff = target_elev - mortar['elev']
+            
+            dist = math.sqrt((target_e - mortar_e)**2 + (target_n - mortar_n)**2)
+            
+            valid_solutions = find_valid_solutions(faction, ammo, dist, elev_diff)
+            if not valid_solutions:
+                result_for_mortar["error"] = f"No valid solution for {mortar.get('callsign', 'gun')}"
+            else:
+                valid_solutions.sort(key=lambda x: x['tof'])
+                
+                least_tof_solution = valid_solutions[0]
+                # Find a most_tof solution that is distinct from the least_tof one
+                most_tof_solution = next((s for s in reversed(valid_solutions) if s['charge'] != least_tof_solution['charge']), least_tof_solution)
+
+                result_for_mortar["least_tof"] = least_tof_solution
+                result_for_mortar["most_tof"] = most_tof_solution
+        except ValueError as e:
+            result_for_mortar["error"] = str(e)
+        except Exception as e:
+            result_for_mortar["error"] = f"Calculation error for {mortar.get('callsign', 'gun')}: {e}"
+        
+        mortar_results.append(result_for_mortar)
+    return mortar_results
 
 def _calculate_barrage(mortars, target_coords, faction, ammo, sort_key='tof', reverse=False):
-    """Helper function to calculate barrage missions."""
-    solutions = []
+    """Helper function to calculate barrage missions,
+    returning results for each mortar, including error status if no solution."""
+    mortar_results = []
     for mortar in mortars:
-        mortar_e, mortar_n = mortar['coords']
-        target_e, target_n, target_elev = target_coords
-        dist = math.sqrt((target_e - mortar_e)**2 + (target_n - mortar_n)**2)
-        elev_diff = target_elev - mortar['elev']
-        
-        valid_solutions = find_valid_solutions(faction, ammo, dist, elev_diff)
-        if not valid_solutions:
-            raise ValueError(f"No valid solution for {mortar.get('callsign', 'gun')}")
-            
-        valid_solutions.sort(key=lambda x: x[sort_key], reverse=reverse)
-        best_solution = valid_solutions[0]
-        
-        solutions.append({
+        result_for_mortar = {
             "mortar": mortar,
             "target_coords": target_coords,
-            "least_tof": best_solution,
-            "most_tof": best_solution
-        })
-    return solutions
+            "least_tof": None,
+            "most_tof": None,
+            "error": None
+        }
+        try:
+            mortar_e, mortar_n = mortar['coords']
+            target_e, target_n, target_elev = target_coords
+            dist = math.sqrt((target_e - mortar_e)**2 + (target_n - mortar_n)**2)
+            elev_diff = target_elev - mortar['elev']
+            
+            valid_solutions = find_valid_solutions(faction, ammo, dist, elev_diff)
+            if not valid_solutions:
+                result_for_mortar["error"] = f"No valid solution for {mortar.get('callsign', 'gun')}"
+            else:
+                valid_solutions.sort(key=lambda x: x[sort_key], reverse=reverse)
+                best_solution = valid_solutions[0]
+                
+                result_for_mortar["least_tof"] = best_solution
+                result_for_mortar["most_tof"] = best_solution # For barrage, least and most are the same
+        except ValueError as e:
+            result_for_mortar["error"] = str(e)
+        except Exception as e:
+            result_for_mortar["error"] = f"Calculation error for {mortar.get('callsign', 'gun')}: {e}"
+        
+        mortar_results.append(result_for_mortar)
+    return mortar_results
 
 def calculate_small_barrage(mortars, target_coords, faction, ammo):
     """Calculates a small barrage, prioritizing the round with the shortest Time of Flight (ToF)."""
@@ -228,60 +249,76 @@ def calculate_large_barrage(mortars, target_coords, faction, ammo):
     return _calculate_barrage(mortars, target_coords, faction, ammo, sort_key='tof', reverse=True)
 
 def calculate_creeping_barrage(mortars, initial_target, creep_direction, faction, ammo, creep_spread=1.0):
-    """Calculates a creeping barrage."""
+    """Calculates a creeping barrage, returning results for each mortar,
+    including error status if no solution."""
     if len(mortars) < 3:
+        # This is a global error for the mission type, not per-mortar
         raise ValueError("Creeping barrage requires at least 3 mortars.")
     
-    solutions = []
+    mortar_results = []
     
-    # Find the best round (least dispersion)
+    # Find the best round (least dispersion) using the first mortar as a reference
     best_charge = None
     min_dispersion = float('inf')
     
-    # Use the first mortar to determine the best charge
-    mortar_e, mortar_n = mortars[0]['coords']
-    target_e, target_n, target_elev = initial_target
-    dist = math.sqrt((target_e - mortar_e)**2 + (target_n - mortar_n)**2)
-    elev_diff = target_elev - mortars[0]['elev']
-    
-    possible_solutions = find_valid_solutions(faction, ammo, dist, elev_diff)
-    if not possible_solutions:
-        raise ValueError("No valid charges for creeping barrage.")
+    try:
+        mortar_e, mortar_n = mortars[0]['coords']
+        target_e, target_n, target_elev = initial_target
+        dist = math.sqrt((target_e - mortar_e)**2 + (target_n - mortar_n)**2)
+        elev_diff = target_elev - mortars[0]['elev']
         
-    for sol in possible_solutions:
-        if sol['dispersion'] < min_dispersion:
-            min_dispersion = sol['dispersion']
-            best_charge = sol['charge']
+        possible_solutions = find_valid_solutions(faction, ammo, dist, elev_diff)
+        if not possible_solutions:
+            raise ValueError("No valid charges for creeping barrage.")
+            
+        for sol in possible_solutions:
+            if sol['dispersion'] < min_dispersion:
+                min_dispersion = sol['dispersion']
+                best_charge = sol['charge']
+    except Exception as e:
+        # If we can't even determine the best charge, it's a global failure for creeping barrage
+        raise ValueError(f"Error determining best charge for creeping barrage: {e}")
 
     creep_rad = math.radians(creep_direction)
     
     for i, mortar in enumerate(mortars):
-        offset_dist = i * min_dispersion * creep_spread
-        
-        new_target_e = initial_target[0] + offset_dist * math.sin(creep_rad)
-        new_target_n = initial_target[1] + offset_dist * math.cos(creep_rad)
-        new_target_coords = (new_target_e, new_target_n, initial_target[2])
-        
-        mortar_e, mortar_n = mortar['coords']
-        dist = math.sqrt((new_target_e - mortar_e)**2 + (new_target_n - mortar_n)**2)
-        elev_diff = new_target_coords[2] - mortar['elev']
-        
-        valid_solutions = find_valid_solutions(faction, ammo, dist, elev_diff)
-        
-        final_solution = None
-        for sol in valid_solutions:
-            if sol['charge'] == best_charge:
-                final_solution = sol
-                break
-        
-        if not final_solution:
-            raise ValueError(f"Could not find solution with charge {best_charge} for {mortar['callsign']}")
-            
-        solutions.append({
+        result_for_mortar = {
             "mortar": mortar,
-            "target_coords": new_target_coords,
-            "least_tof": final_solution,
-            "most_tof": final_solution
-        })
+            "target_coords": None, # Will be set below
+            "least_tof": None,
+            "most_tof": None,
+            "error": None
+        }
+        try:
+            offset_dist = i * min_dispersion * creep_spread
+            
+            new_target_e = initial_target[0] + offset_dist * math.sin(creep_rad)
+            new_target_n = initial_target[1] + offset_dist * math.cos(creep_rad)
+            new_target_coords = (new_target_e, new_target_n, initial_target[2])
+            result_for_mortar["target_coords"] = new_target_coords
+            
+            mortar_e, mortar_n = mortar['coords']
+            dist = math.sqrt((new_target_e - mortar_e)**2 + (new_target_n - mortar_n)**2)
+            elev_diff = new_target_coords[2] - mortar['elev']
+            
+            valid_solutions = find_valid_solutions(faction, ammo, dist, elev_diff)
+            
+            final_solution = None
+            for sol in valid_solutions:
+                if sol['charge'] == best_charge:
+                    final_solution = sol
+                    break
+            
+            if not final_solution:
+                result_for_mortar["error"] = f"Could not find solution with charge {best_charge} for {mortar.get('callsign', 'gun')}"
+            else:
+                result_for_mortar["least_tof"] = final_solution
+                result_for_mortar["most_tof"] = final_solution
+        except ValueError as e:
+            result_for_mortar["error"] = str(e)
+        except Exception as e:
+            result_for_mortar["error"] = f"Calculation error for {mortar.get('callsign', 'gun')}: {e}"
+            
+        mortar_results.append(result_for_mortar)
         
-    return solutions
+    return mortar_results

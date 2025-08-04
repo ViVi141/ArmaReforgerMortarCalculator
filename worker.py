@@ -1,5 +1,7 @@
 import queue
 import traceback
+import math # Import math for calculations
+from ballistics import MILS_PER_REVOLUTION # Import MILS_PER_REVOLUTION
 from calculations import (
     parse_grid,
     calculate_target_coords,
@@ -16,18 +18,26 @@ def worker_thread(task_queue, result_queue, app):
     and puts the result or an exception onto the result_queue.
     """
     while True:
-        try:
-            task = task_queue.get(block=True)
-            if task is None:  # Sentinel value to exit the thread
-                break
+        task = task_queue.get(block=True)
+        if task is None:  # Sentinel value to exit the thread
+            break
 
+        try:
             result = process_task(task)
             result_queue.put(result)
         except Exception as e:
-            # Print the full traceback to the console for debugging
-            traceback.print_exc()
-            # Pass exceptions back to the main thread to be handled
-            result_queue.put(e)
+            # Catch specific ValueErrors from calculations and return a structured error
+            if isinstance(e, ValueError) and "No valid solution" in str(e):
+                result_queue.put({
+                    'is_trp_list_calc': task.get('is_trp_list_calc', False),
+                    'trp_name': task.get('trp_name', 'Unknown TRP'),
+                    'solutions': [],
+                    'error': str(e)
+                })
+            else:
+                # For other unexpected exceptions, print traceback and pass the exception
+                traceback.print_exc()
+                result_queue.put(e)
         finally:
             # Always generate the event, even if an exception occurred
             app.event_generate("<<CalculationFinished>>")
@@ -75,7 +85,8 @@ def process_task(task):
         # In Grid mode, the target coordinates are taken directly from the UI
         # We need to get them from the task dictionary
         target_grid_str = task['target_grid_str']
-        target_elev = task['target_elev']
+        # Ensure target_elev is a float, defaulting to 0.0 if it's an empty string or invalid
+        target_elev = float(task['target_elev']) if isinstance(task['target_elev'], str) and task['target_elev'].strip() != "" else (task['target_elev'] if isinstance(task['target_elev'], (int, float)) else 0.0)
         target_easting, target_northing = parse_grid(target_grid_str)
         initial_target = (target_easting, target_northing, target_elev)
 
@@ -91,4 +102,35 @@ def process_task(task):
     else:
         raise ValueError(f"Invalid mission type: {mission_type}")
 
-    return solutions
+    # Process solutions to add azimuth, distance, and elev_diff
+    processed_solutions = []
+    for sol in solutions:
+        mortar_e, mortar_n = sol['mortar']['coords']
+        target_e, target_n, target_elev = sol['target_coords']
+        
+        delta_easting, delta_northing = target_e - mortar_e, target_n - mortar_n
+        mortar_target_dist = math.sqrt(delta_easting**2 + delta_northing**2)
+        mortar_target_elev_diff = target_elev - sol['mortar']['elev']
+        azimuth_rad_mt = math.atan2(delta_easting, delta_northing)
+        
+        # Get faction from task, default to NATO if not present
+        selected_faction = task.get('faction', 'NATO')
+        mils_in_revolution = MILS_PER_REVOLUTION.get(selected_faction, 6400)
+        azimuth_mils_mt = (azimuth_rad_mt / math.pi) * (mils_in_revolution / 2)
+        if azimuth_mils_mt < 0:
+            azimuth_mils_mt += mils_in_revolution
+        
+        sol['azimuth'] = azimuth_mils_mt
+        sol['distance'] = mortar_target_dist
+        sol['elev_diff'] = mortar_target_elev_diff
+        sol['target_elev'] = target_elev # Add target_elev to the solution dictionary
+        processed_solutions.append(sol)
+
+    # Always return a dictionary with the necessary flags
+    return {
+        'is_trp_list_calc': task.get('is_trp_list_calc', False),
+        'trp_name': task.get('trp_name', None),
+        'original_trp_grid': task.get('target_grid_str', None), # Add original TRP grid
+        'original_trp_elev': task.get('target_elev', None), # Add original TRP elevation
+        'solutions': processed_solutions
+    }

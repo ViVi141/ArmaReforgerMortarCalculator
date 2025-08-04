@@ -32,6 +32,8 @@ class StateManager:
         
         # This list will hold dictionaries of tk.Variables for each mortar
         self.mortar_input_vars = []
+        # This list will hold dictionaries of tk.Variables for each TRP
+        self.trp_input_vars = []
 
         self.fo_grid_var = tk.StringVar(value="0000000000")
         self.fo_elev_var = tk.DoubleVar(value=100)
@@ -94,6 +96,23 @@ class StateManager:
     def get_mortar_vars(self, index):
         """Returns the variables for a specific mortar."""
         return self.mortar_input_vars[index]
+
+    def add_trp(self):
+        """Adds a new set of variables for a TRP."""
+        self.trp_input_vars.append({
+            "grid": tk.StringVar(value="0000000000"),
+            "elev": tk.DoubleVar(value=100),
+            "name": tk.StringVar(value=f"TRP {len(self.trp_input_vars) + 1}")
+        })
+
+    def clear_trps(self):
+        """Clears all TRP variables."""
+        self.trp_input_vars.clear()
+
+    def get_trp_vars(self, index):
+        """Returns the variables for a specific TRP."""
+        return self.trp_input_vars[index]
+
     def reset_inputs(self):
         """Resets all user-configurable input fields to their default state."""
         self.num_mortars_var.set(1)
@@ -117,3 +136,23 @@ class StateManager:
         # Reset mortar inputs
         self.clear_mortars()
         self.add_mortar() # Add back one default mortar
+
+        # Reset TRP inputs
+        self.clear_trps()
+
+    def add_trp(self):
+        """Adds a new set of variables for a TRP."""
+        self.trp_input_vars.append({
+            "grid": tk.StringVar(value="0000000000"),
+            "elev": tk.DoubleVar(value=100),
+            "name": tk.StringVar(value=f"TRP {len(self.trp_input_vars) + 1}"),
+            "status": tk.StringVar(value="Pending") # New status variable
+        })
+
+    def clear_trps(self):
+        """Clears all TRP variables."""
+        self.trp_input_vars.clear()
+
+    def get_trp_vars(self, index):
+        """Returns the variables for a specific TRP."""
+        return self.trp_input_vars[index]
