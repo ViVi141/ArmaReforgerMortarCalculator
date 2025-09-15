@@ -1,56 +1,110 @@
-# Arma Reforger Mortar Calculator
+# Arma Reforger 迫击炮计算器
 
-A mortar calculator for Arma Reforger designed to assist with indirect fire missions.
+专为Arma Reforger设计的迫击炮计算器，用于辅助间接火力任务。
 
-## How to Use
+**版本**: 1.0 (汉化版)  
+**更新日期**: 2025年9月15日  
+**作者**: ViVi141  
+**语言**: 中文 (Chinese)
 
-### Requirements
-*   **Mortar Team:** 1-3 players
-*   **Forward Observer (FO):** 1-2 players in a reconnaissance role
+## 汉化说明
 
-### Step 1: Mortar Position
-1.  **Get Mortar Coordinates:**
-    *   As a member of the mortar team, open the mortar sight and use the in-game DAGR to get a precise 10-digit grid coordinate.
-    *   **Note on Grids:** An 8-digit grid can be converted to a 10-digit grid by adding a zero after the fourth digit of both the easting and northing (e.g., `1234 1234` becomes `12340 12340`). The calculator expects the easting (X-axis, left/right) first, then the northing (Y-axis, up/down).
-2.  **Get Mortar Elevation:**
-    *   Your elevation can be found on the DAGR, usually located beneath the grid coordinates.
+本版本为Arma Reforger Mortar Calculator的完全中文化版本，所有用户界面文本、消息框、错误提示等均已汉化为中文，方便中文用户使用。
 
-### Step 2: Forward Observer & Target Data
-1.  **Get FO and Target Data:**
-    *   The Forward Observer should acquire their own 10-digit grid and elevation.
-    *   Using the Vector 21 binoculars is recommended for acquiring target data, but manual calculation is also possible.
-2.  **Acquire Target Range and Elevation Change:**
-    *   Press and release `R`, then press and hold `R` again. This will display the range to the target on the left and the elevation difference on the right.
-3.  **Acquire Target Azimuth:**
-    *   Press and hold `V` until a vector appears. If two vectors are displayed, use the one on the left.
-    *   **Tip:** Remember **R** for **R**ange and **V** for **V**ector.
+### 汉化内容
+- ✅ 主界面所有文本和标签
+- ✅ 设置界面和配置选项
+- ✅ 地图视图和交互元素
+- ✅ 目标参考点(TRP)管理界面
+- ✅ 火力任务规划器界面
+- ✅ 任务日志和数据显示
+- ✅ 所有消息框和错误提示
+- ✅ 调试信息和状态文本
 
-### Step 3: Fire Mission
-1.  **Ammunition:** Select the appropriate ammo type from the dropdown menu.
-2.  **Calculate:** Click the "Calculate Firing Solution" button.
-3.  **Verify:** Cross-reference the visual representation on the right with the actual battlefield to ensure the Mortar, FO, and Target positions are similar. Proceed with caution if they differ significantly.
-4.  **Aiming:**
-    *   Find the **"Mortar-Target Azimuth"** in the "Calculated Target Details" section. This is the MIL value you will use for the horizontal dial on the mortar sight.
-    *   In the "Final Firing Solution" section, find the **"Corrected Elevation"** for your chosen charge. This is the MIL value for the vertical dial on the mortar sight.
-    *   **Tactical Tip:** For a rapid barrage, you can fire the charge with the most time of flight first, then switch to the charge with the least time of flight. After about half the time has elapsed for the first round, begin firing the faster rounds. This gives the FO time to call for corrections while still delivering a high volume of fire.
-5.  **Log Mission:** Give the mission a name and click "Log Current Mission" to save it for later. You can reload and adjust missions as needed.
+## 使用方法
 
-### Map Settings & Customization
+### 人员配置
+*   **迫击炮组:** 1-3名玩家
+*   **前观员 (FO):** 1-2名玩家担任侦察角色
 
-The calculator includes a powerful map management system accessible via the **Settings** tab.
+### 第一步：迫击炮位置
+1.  **获取迫击炮坐标:**
+    *   作为迫击炮组成员，打开迫击炮瞄准镜，使用游戏内的DAGR获取精确的10位网格坐标。
+    *   **网格坐标说明:** 8位网格可以通过在东向和北向坐标的第四位数字后各添加一个零来转换为10位网格（例如：`1234 1234` 变为 `12340 12340`）。计算器期望先输入东向坐标（X轴，左右），然后是北向坐标（Y轴，上下）。
+2.  **获取迫击炮海拔:**
+    *   您的海拔高度可以在DAGR上找到，通常位于网格坐标下方。
 
-*   **Map Selection:** Choose from preloaded maps (Zarichne, Serhiivka, etc.) or maps you have uploaded.
-*   **Custom Dimensions:** The system supports rectangular maps. When you select a map, its dimensions will be loaded automatically.
-*   **Uploading New Maps:**
-    1.  Go to **Settings** -> **Map Settings**.
-    2.  Enter the map's maximum X and Y dimensions in meters.
-    3.  Click **"Upload New Map"** and select the image file.
-    4.  The map will be copied to the application's `maps` folder and its settings will be saved for future use.
+### 第二步：前观员和目标数据
+1.  **获取FO和目标数据:**
+    *   前观员应获取自己的10位网格坐标和海拔。
+    *   建议使用Vector 21双筒望远镜获取目标数据，但也可以进行手动计算。
+2.  **获取目标距离和海拔变化:**
+    *   按下并释放 `R` 键，然后再次按下并按住 `R` 键。这将在左侧显示到目标的距离，右侧显示海拔差异。
+3.  **获取目标方位角:**
+    *   按住 `V` 键直到出现向量。如果显示两个向量，使用左侧的那个。
+    *   **提示:** 记住 **R** 代表 **R**ange（距离），**V** 代表 **V**ector（向量）。
 
-### Advanced Targeting
+### 第三步：火力任务
+1.  **弹药:** 从下拉菜单中选择适当的弹药类型。
+2.  **计算:** 点击"计算射击方案"按钮。
+3.  **验证:** 将右侧的视觉表示与实际战场进行交叉参考，确保迫击炮、FO和目标位置相似。如果差异很大，请谨慎进行。
+4.  **瞄准:**
+    *   在"计算目标详情"部分找到**"迫击炮-目标方位角"**。这是您将在迫击炮瞄准镜水平刻度盘上使用的密位值。
+    *   在"最终射击方案"部分，找到您选择的装药的**"修正仰角"**。这是迫击炮瞄准镜垂直刻度盘的密位值。
+    *   **战术提示:** 对于快速弹幕，您可以先发射飞行时间最长的装药，然后切换到飞行时间最短的装药。在第一发炮弹大约一半时间过去后，开始发射更快的炮弹。这给FO时间呼叫修正，同时仍能提供高火力密度。
+5.  **记录任务:** 给任务起个名字，点击"记录当前任务"以保存供以后使用。您可以根据需要重新加载和调整任务。
 
-For rapid target acquisition, an advanced mode can be activated in the settings panel. This allows you to **right-click** directly on the map to set a target's location, bypassing the need for FO data.
+### 地图设置和自定义
 
-### Current Status & Notes
+计算器包含一个强大的地图管理系统，可通过**设置**标签页访问。
 
-*   **Fire Mission Corrections:** This feature is currently a work in progress and may not be reliable.
+*   **地图选择:** 从预加载的地图（Zarichne、Serhiivka等）或您上传的地图中选择。
+*   **自定义尺寸:** 系统支持矩形地图。当您选择地图时，其尺寸将自动加载。
+*   **上传新地图:**
+    1.  转到**设置** -> **地图设置**。
+    2.  输入地图的最大X和Y尺寸（以米为单位）。
+    3.  点击**"上传新地图"**并选择图像文件。
+    4.  地图将被复制到应用程序的`maps`文件夹中，其设置将保存以供将来使用。
+
+### 高级瞄准
+
+为了快速目标获取，可以在设置面板中激活高级模式。这允许您**右键单击**地图直接设置目标位置，绕过对FO数据的需求。
+
+### 当前状态和注意事项
+
+*   **火力任务修正:** 此功能目前正在开发中，可能不可靠。
+
+## 更新日志
+
+### v1.0 (汉化版) - 2025年9月15日
+**作者**: ViVi141
+
+#### 新增功能
+- 🌏 **完全中文化界面** - 所有用户界面文本已汉化为中文
+- 🔧 **错误消息汉化** - 所有错误提示和调试信息已汉化
+- 📝 **消息框汉化** - 所有对话框和确认框已汉化
+- 🎯 **专业术语翻译** - 使用准确的军事和弹道学术语
+
+#### 汉化详情
+- **主界面**: 迫击炮计算器、目标数据、火力任务等
+- **设置界面**: 地图设置、主题切换、警告设置等
+- **地图视图**: 显示已记录目标、杀伤区域、预期伤害区域等
+- **TRP管理**: 目标参考点、网格、海拔、状态等
+- **任务规划器**: 上传图片、绘图工具、保存计划等
+- **任务日志**: 目标名称、网格、弹药、方位角等
+
+#### 技术改进
+- 修复网格坐标解析错误消息汉化
+- 优化用户界面文本显示
+- 改进错误处理和用户反馈
+- 增强调试信息的可读性
+
+#### 使用说明
+1. 运行 `python main.py` 启动程序
+2. 所有界面文本均为中文显示
+3. 按照中文界面提示进行操作
+4. 支持原有的所有功能特性
+
+---
+
+**注意**: 本汉化版本基于原版Arma Reforger Mortar Calculator进行本地化，保持了所有原有功能的同时提供了完整的中文用户界面。

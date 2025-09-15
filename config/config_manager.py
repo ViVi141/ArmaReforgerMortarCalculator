@@ -56,8 +56,8 @@ class ConfigManager:
                 "y_max": y_max
             }
             self.save_config()
-            messagebox.showinfo("Success", f"Map '{map_filename}' uploaded and saved.")
+            messagebox.showinfo("成功", f"地图 '{map_filename}' 上传并保存成功。")
             return True, map_filename
         except Exception as e:
-            messagebox.showerror("Error", f"Failed to upload map: {e}")
+            messagebox.showerror("错误", f"上传地图失败: {e}")
             return False, None

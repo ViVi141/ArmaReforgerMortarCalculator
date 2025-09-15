@@ -74,21 +74,21 @@ class FireMissionPlannerView(ttk.Frame):
         self.toolbar = ttk.Frame(self)
         self.toolbar.pack(side="top", fill="x", pady=5)
 
-        ttk.Button(self.toolbar, text="Upload Image", command=self.upload_image).pack(side="left", padx=5)
-        ttk.Button(self.toolbar, text="Load Default Map", command=self.load_default_map).pack(side="left", padx=5)
-        ttk.Button(self.toolbar, text="Save Plan", command=self.save_plan).pack(side="left", padx=5)
-        ttk.Button(self.toolbar, text="Clear All", command=self.clear_all).pack(side="left", padx=5)
+        ttk.Button(self.toolbar, text="上传图片", command=self.upload_image).pack(side="left", padx=5)
+        ttk.Button(self.toolbar, text="加载默认地图", command=self.load_default_map).pack(side="left", padx=5)
+        ttk.Button(self.toolbar, text="保存计划", command=self.save_plan).pack(side="left", padx=5)
+        ttk.Button(self.toolbar, text="清空所有", command=self.clear_all).pack(side="left", padx=5)
         
         ttk.Separator(self.toolbar, orient='vertical').pack(side='left', padx=5, fill='y')
 
         self.selected_tool = tk.StringVar(value="line")
-        ttk.Radiobutton(self.toolbar, text="Line", variable=self.selected_tool, value="line").pack(side="left")
-        ttk.Radiobutton(self.toolbar, text="Arrow", variable=self.selected_tool, value="arrow").pack(side="left")
-        ttk.Radiobutton(self.toolbar, text="Circle", variable=self.selected_tool, value="circle").pack(side="left")
-        ttk.Radiobutton(self.toolbar, text="Rectangle", variable=self.selected_tool, value="rectangle").pack(side="left")
-        ttk.Radiobutton(self.toolbar, text="Text", variable=self.selected_tool, value="text").pack(side="left")
-        ttk.Radiobutton(self.toolbar, text="Delete", variable=self.selected_tool, value="delete").pack(side="left")
-        ttk.Radiobutton(self.toolbar, text="Resize", variable=self.selected_tool, value="resize").pack(side="left")
+        ttk.Radiobutton(self.toolbar, text="直线", variable=self.selected_tool, value="line").pack(side="left")
+        ttk.Radiobutton(self.toolbar, text="箭头", variable=self.selected_tool, value="arrow").pack(side="left")
+        ttk.Radiobutton(self.toolbar, text="圆形", variable=self.selected_tool, value="circle").pack(side="left")
+        ttk.Radiobutton(self.toolbar, text="矩形", variable=self.selected_tool, value="rectangle").pack(side="left")
+        ttk.Radiobutton(self.toolbar, text="文本", variable=self.selected_tool, value="text").pack(side="left")
+        ttk.Radiobutton(self.toolbar, text="删除", variable=self.selected_tool, value="delete").pack(side="left")
+        ttk.Radiobutton(self.toolbar, text="调整大小", variable=self.selected_tool, value="resize").pack(side="left")
 
         ttk.Separator(self.toolbar, orient='vertical').pack(side='left', padx=5, fill='y')
 
@@ -129,7 +129,7 @@ class FireMissionPlannerView(ttk.Frame):
             self.load_image(map_path)
 
     def upload_image(self):
-        file_path = filedialog.askopenfilename(filetypes=[("Image Files", "*.png;*.jpg;*.jpeg")])
+        file_path = filedialog.askopenfilename(filetypes=[("图片文件", "*.png;*.jpg;*.jpeg")])
         if not file_path:
             return
         self.load_image(file_path)
@@ -190,7 +190,7 @@ class FireMissionPlannerView(ttk.Frame):
             self.drawn_items.append(item)
 
     def save_plan(self):
-        file_path = filedialog.asksaveasfilename(defaultextension=".png", filetypes=[("PNG Files", "*.png")])
+        file_path = filedialog.asksaveasfilename(defaultextension=".png", filetypes=[("PNG文件", "*.png")])
         if not file_path:
             return
         

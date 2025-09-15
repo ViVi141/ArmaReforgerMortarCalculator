@@ -21,9 +21,9 @@ class TRPSelectDialog(tk.Toplevel):
 
         columns = ("Grid", "Elevation", "Name/ID")
         self.trp_tree = ttk.Treeview(tree_frame, columns=columns, show="headings")
-        self.trp_tree.heading("Grid", text="Grid")
-        self.trp_tree.heading("Elevation", text="Elevation")
-        self.trp_tree.heading("Name/ID", text="Name/ID")
+        self.trp_tree.heading("Grid", text="网格")
+        self.trp_tree.heading("Elevation", text="海拔")
+        self.trp_tree.heading("Name/ID", text="名称/ID")
         
         self.trp_tree.column("Grid", width=100, anchor="center")
         self.trp_tree.column("Elevation", width=70, anchor="center")
@@ -50,9 +50,9 @@ class TRPSelectDialog(tk.Toplevel):
         # Buttons
         button_frame = ttk.Frame(self)
         button_frame.pack(pady=5)
-        select_button = ttk.Button(button_frame, text="Select TRP", command=self.on_select)
+        select_button = ttk.Button(button_frame, text="选择TRP", command=self.on_select)
         select_button.pack(side="left", padx=10)
-        cancel_button = ttk.Button(button_frame, text="Cancel", command=self.destroy)
+        cancel_button = ttk.Button(button_frame, text="取消", command=self.destroy)
         cancel_button.pack(side="left", padx=10)
 
         self.update_idletasks()
@@ -88,33 +88,33 @@ class TRPView(ttk.Frame):
         self.pack(fill="both", expand=True)
 
         # Input Frame for new TRPs
-        input_frame = ttk.LabelFrame(self, text="Add New TRP")
+        input_frame = ttk.LabelFrame(self, text="添加新TRP")
         input_frame.pack(fill="x", padx=10, pady=5)
 
-        ttk.Label(input_frame, text="Grid:").grid(row=0, column=0, padx=5, pady=2, sticky="w")
+        ttk.Label(input_frame, text="网格:").grid(row=0, column=0, padx=5, pady=2, sticky="w")
         self.grid_entry = ttk.Entry(input_frame, width=15)
         self.grid_entry.grid(row=0, column=1, padx=5, pady=2, sticky="ew")
-
-        ttk.Label(input_frame, text="Elevation (m):").grid(row=0, column=2, padx=5, pady=2, sticky="w")
+        
+        ttk.Label(input_frame, text="海拔 (米):").grid(row=0, column=2, padx=5, pady=2, sticky="w")
         self.elev_entry = ttk.Entry(input_frame, width=10)
         self.elev_entry.grid(row=0, column=3, padx=5, pady=2, sticky="ew")
-
-        ttk.Label(input_frame, text="Name/ID:").grid(row=1, column=0, padx=5, pady=2, sticky="w")
+        
+        ttk.Label(input_frame, text="名称/ID:").grid(row=1, column=0, padx=5, pady=2, sticky="w")
         self.name_entry = ttk.Entry(input_frame, width=20)
         self.name_entry.grid(row=1, column=1, columnspan=3, padx=5, pady=2, sticky="ew")
-
-        add_button = ttk.Button(input_frame, text="Add TRP", command=self.add_trp)
+        
+        add_button = ttk.Button(input_frame, text="添加TRP", command=self.add_trp)
         add_button.grid(row=2, column=0, columnspan=4, pady=5)
 
         # TRP List Display
-        list_frame = ttk.LabelFrame(self, text="Target Reference Points")
+        list_frame = ttk.LabelFrame(self, text="目标参考点")
         list_frame.pack(fill="both", expand=True, padx=10, pady=5)
 
         self.trp_tree = ttk.Treeview(list_frame, columns=("Grid", "Elevation", "Name/ID", "Status"), show="headings")
-        self.trp_tree.heading("Grid", text="Grid")
-        self.trp_tree.heading("Elevation", text="Elevation")
-        self.trp_tree.heading("Name/ID", text="Name/ID")
-        self.trp_tree.heading("Status", text="Status")
+        self.trp_tree.heading("Grid", text="网格")
+        self.trp_tree.heading("Elevation", text="海拔")
+        self.trp_tree.heading("Name/ID", text="名称/ID")
+        self.trp_tree.heading("Status", text="状态")
         
         self.trp_tree.column("Grid", width=100, anchor="center")
         self.trp_tree.column("Elevation", width=70, anchor="center")
@@ -132,26 +132,26 @@ class TRPView(ttk.Frame):
         self.trp_tree.bind("<<TreeviewSelect>>", self.on_trp_selected)
 
         # TRP Details Display
-        self.details_frame = ttk.LabelFrame(self, text="Selected TRP Details")
+        self.details_frame = ttk.LabelFrame(self, text="选中TRP详情")
         self.details_frame.pack(fill="x", padx=10, pady=5)
 
-        self.detail_grid_label = ttk.Label(self.details_frame, text="Grid: ")
+        self.detail_grid_label = ttk.Label(self.details_frame, text="网格: ")
         self.detail_grid_label.grid(row=0, column=0, padx=5, pady=2, sticky="w")
-        self.detail_elev_label = ttk.Label(self.details_frame, text="Elevation: ")
+        self.detail_elev_label = ttk.Label(self.details_frame, text="海拔: ")
         self.detail_elev_label.grid(row=1, column=0, padx=5, pady=2, sticky="w")
-        self.detail_name_label = ttk.Label(self.details_frame, text="Name/ID: ")
+        self.detail_name_label = ttk.Label(self.details_frame, text="名称/ID: ")
         self.detail_name_label.grid(row=2, column=0, padx=5, pady=2, sticky="w")
-        self.detail_status_label = ttk.Label(self.details_frame, text="Status: ")
+        self.detail_status_label = ttk.Label(self.details_frame, text="状态: ")
         self.detail_status_label.grid(row=3, column=0, padx=5, pady=2, sticky="w")
 
         # Buttons for list management
         button_frame = ttk.Frame(self)
         button_frame.pack(fill="x", padx=10, pady=5)
 
-        ttk.Button(button_frame, text="Remove Selected TRP", command=self.remove_selected_trp).pack(side="left", padx=5)
-        ttk.Button(button_frame, text="Clear All TRPs", command=self.clear_all_trps).pack(side="left", padx=5)
-        ttk.Button(button_frame, text="Calculate All TRPs", command=self.calculate_all_trps).pack(side="right", padx=5)
-        ttk.Button(button_frame, text="Load TRPs from Mission Log", command=self.load_trps_from_log).pack(side="right", padx=5)
+        ttk.Button(button_frame, text="删除选中TRP", command=self.remove_selected_trp).pack(side="left", padx=5)
+        ttk.Button(button_frame, text="清空所有TRP", command=self.clear_all_trps).pack(side="left", padx=5)
+        ttk.Button(button_frame, text="计算所有TRP", command=self.calculate_all_trps).pack(side="right", padx=5)
+        ttk.Button(button_frame, text="从任务日志加载TRP", command=self.load_trps_from_log).pack(side="right", padx=5)
 
         self.refresh_trp_list() # Initial population
 
@@ -161,13 +161,13 @@ class TRPView(ttk.Frame):
         name = self.name_entry.get()
 
         if not grid or not elev:
-            messagebox.showerror("Input Error", "Grid and Elevation are required.")
+            messagebox.showerror("输入错误", "网格和海拔是必需的。")
             return
 
         try:
             float(elev) # Validate elevation is a number
         except ValueError:
-            messagebox.showerror("Input Error", "Elevation must be a number.")
+            messagebox.showerror("输入错误", "海拔必须是数字。")
             return
 
         self.app.state.add_trp()
@@ -185,7 +185,7 @@ class TRPView(ttk.Frame):
     def remove_selected_trp(self):
         selected_items = self.trp_tree.selection()
         if not selected_items:
-            messagebox.showinfo("Selection", "No TRP selected to remove.")
+            messagebox.showinfo("选择", "没有选中要删除的TRP。")
             return
 
         # Remove from state_manager and then refresh UI
@@ -196,7 +196,7 @@ class TRPView(ttk.Frame):
         self.refresh_trp_list()
 
     def clear_all_trps(self):
-        if messagebox.askyesno("Clear All", "Are you sure you want to clear all TRPs?"):
+        if messagebox.askyesno("清空所有", "确定要清空所有TRP吗？"):
             self.app.state.clear_trps()
             self.refresh_trp_list()
 
@@ -225,14 +225,14 @@ class TRPView(ttk.Frame):
 
     def calculate_all_trps(self):
         if not self.app.state.trp_input_vars:
-            messagebox.showinfo("No TRPs", "Please add TRPs to the list before calculating.")
+            messagebox.showinfo("无TRP", "请在计算前向列表添加TRP。")
             return
         self.app.calculate_trps_from_list()
 
     def load_trps_from_log(self):
         file_path = filedialog.askopenfilename(
             filetypes=[("JSON files", "*.json"), ("All files", "*.*")],
-            title="Load Mission Log for TRPs"
+            title="加载任务日志以获取TRP"
         )
         if not file_path:
             return
@@ -283,16 +283,16 @@ class TRPView(ttk.Frame):
                     new_trp_vars['name'].set(name)
                     new_trp_vars['status'].set(initial_status) # Set initial status
                 else:
-                    print(f"Skipping log entry due to missing grid: {entry}")
-                    messagebox.showwarning("Load Warning", f"Skipped an entry from the log due to missing grid data: {name}")
+                    print(f"由于缺少网格数据，跳过日志条目: {entry}")
+                    messagebox.showwarning("加载警告", f"由于缺少网格数据，跳过了日志中的条目: {name}")
 
             self.refresh_trp_list()
-            messagebox.showinfo("Success", f"Loaded {len(self.app.state.trp_input_vars)} TRPs from log file.")
+            messagebox.showinfo("成功", f"从日志文件加载了 {len(self.app.state.trp_input_vars)} 个TRP。")
 
         except json.JSONDecodeError:
-            messagebox.showerror("Error", "Invalid JSON file. Please select a valid mission log.")
+            messagebox.showerror("错误", "无效的JSON文件。请选择有效的任务日志。")
         except Exception as e:
-            messagebox.showerror("Error", f"An error occurred while loading TRPs: {e}")
+            messagebox.showerror("错误", f"加载TRP时发生错误: {e}")
 
     def load_valid_trp_to_main(self):
         all_trps_data = []
@@ -305,10 +305,10 @@ class TRPView(ttk.Frame):
             })
 
         if not all_trps_data:
-            messagebox.showinfo("No TRPs", "No TRPs found in the list to load to Main tab.")
+            messagebox.showinfo("无TRP", "列表中没有找到可加载到主界面的TRP。")
             return
 
-        dialog = TRPSelectDialog(self.app, "Select TRP from List", all_trps_data, self.app.is_dark_mode)
+        dialog = TRPSelectDialog(self.app, "从列表选择TRP", all_trps_data, self.app.is_dark_mode)
         selected_trp = dialog.result
 
         if selected_trp:
@@ -318,7 +318,7 @@ class TRPView(ttk.Frame):
             self.app.state.targeting_mode_var.set("Grid") # Ensure Grid mode is selected
             self.app.on_targeting_mode_change() # Update UI based on mode change
             self.app.notebook.select(0) # Switch to Main tab
-            messagebox.showinfo("TRP Loaded", f"TRP '{selected_trp['name']}' loaded to Main tab.")
+            messagebox.showinfo("TRP已加载", f"TRP '{selected_trp['name']}' 已加载到主界面。")
             self.app.calculate_all() # Auto-calculate after loading
     
     def on_trp_selected(self, event):
@@ -328,15 +328,15 @@ class TRPView(ttk.Frame):
             index = self.trp_tree.index(item_id)
             if 0 <= index < len(self.app.state.trp_input_vars):
                 selected_trp_vars = self.app.state.get_trp_vars(index)
-                self.detail_grid_label.config(text=f"Grid: {selected_trp_vars['grid'].get()}")
-                self.detail_elev_label.config(text=f"Elevation: {selected_trp_vars['elev'].get():.1f} m")
-                self.detail_name_label.config(text=f"Name/ID: {selected_trp_vars['name'].get()}")
-                self.detail_status_label.config(text=f"Status: {selected_trp_vars['status'].get()}")
+                self.detail_grid_label.config(text=f"网格: {selected_trp_vars['grid'].get()}")
+                self.detail_elev_label.config(text=f"海拔: {selected_trp_vars['elev'].get():.1f} 米")
+                self.detail_name_label.config(text=f"名称/ID: {selected_trp_vars['name'].get()}")
+                self.detail_status_label.config(text=f"状态: {selected_trp_vars['status'].get()}")
         else:
-            self.detail_grid_label.config(text="Grid: ")
-            self.detail_elev_label.config(text="Elevation: ")
-            self.detail_name_label.config(text="Name/ID: ")
-            self.detail_status_label.config(text="Status: ")
+            self.detail_grid_label.config(text="网格: ")
+            self.detail_elev_label.config(text="海拔: ")
+            self.detail_name_label.config(text="名称/ID: ")
+            self.detail_status_label.config(text="状态: ")
             
     def apply_theme(self):
         # This method will be called by the main app to apply theme changes

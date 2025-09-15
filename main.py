@@ -39,9 +39,9 @@ class CustomDialog(tk.Toplevel):
         label.pack(padx=20, pady=20)
         button_frame = ttk.Frame(self, style="TFrame")
         button_frame.pack(pady=10)
-        yes_button = ttk.Button(button_frame, text="Yes", command=self.on_yes, style="TButton")
+        yes_button = ttk.Button(button_frame, text="是", command=self.on_yes, style="TButton")
         yes_button.pack(side="left", padx=10)
-        no_button = ttk.Button(button_frame, text="No", command=self.on_no, style="TButton")
+        no_button = ttk.Button(button_frame, text="否", command=self.on_no, style="TButton")
         no_button.pack(side="left", padx=10)
         self.transient(parent)
         self.update_idletasks()
@@ -66,7 +66,7 @@ class CustomDialog(tk.Toplevel):
 class MortarCalculatorApp(tk.Tk):
     def __init__(self):
         super().__init__()
-        self.title("Arma Reforger Mortar Calculator")
+        self.title("Arma Reforger 迫击炮计算器")
         screen_width, screen_height = self.winfo_screenwidth(), self.winfo_screenheight()
         width, height = 1015, 1180
         x = screen_width - width
@@ -149,10 +149,10 @@ class MortarCalculatorApp(tk.Tk):
                 self.canvas.yview_scroll(int(-1*(event.delta/120)), "units")
         self.bind_all("<MouseWheel>", _on_global_mousewheel)
 
-        self.notebook.add(main_tab_frame, text="Main")
-        self.notebook.add(self.trp_tab, text="TRP") # Add TRP tab
-        self.notebook.add(self.fire_mission_planner_tab, text="Fire Mission Planner")
-        self.notebook.add(self.settings_tab, text="Settings")
+        self.notebook.add(main_tab_frame, text="主界面")
+        self.notebook.add(self.trp_tab, text="目标参考点") # Add TRP tab
+        self.notebook.add(self.fire_mission_planner_tab, text="火力任务规划器")
+        self.notebook.add(self.settings_tab, text="设置")
 
         self.setup_trp_tab() # Setup TRP tab first
         self.setup_main_tab()
@@ -175,13 +175,13 @@ class MortarCalculatorApp(tk.Tk):
         input_frame = ttk.Frame(self.main_tab)
         input_frame.pack(fill="both", expand=True)
         
-        self.mortar_frame = ttk.LabelFrame(input_frame, text="1. Mortar Positions")
+        self.mortar_frame = ttk.LabelFrame(input_frame, text="1. 迫击炮位置")
         self.mortar_frame.pack(fill="x", expand=True, pady=5)
 
         # --- Mortar Count ---
         mortar_count_frame = ttk.Frame(self.mortar_frame)
         mortar_count_frame.pack(side="top", fill="x", padx=5, pady=5)
-        ttk.Label(mortar_count_frame, text="Number of Mortars:").grid(row=0, column=0, sticky="w")
+        ttk.Label(mortar_count_frame, text="迫击炮数量:").grid(row=0, column=0, sticky="w")
         num_mortars_combo = ttk.Combobox(mortar_count_frame, textvariable=self.state.num_mortars_var, values=[1, 2, 3, 4], width=5, state="readonly")
         num_mortars_combo.grid(row=0, column=1, sticky="w", padx=5)
         num_mortars_combo.bind("<<ComboboxSelected>>", self.update_mortar_inputs)
@@ -191,7 +191,7 @@ class MortarCalculatorApp(tk.Tk):
 
         self.update_mortar_inputs()
 
-        fire_mission_frame = ttk.LabelFrame(input_frame, text="2. Fire Mission")
+        fire_mission_frame = ttk.LabelFrame(input_frame, text="2. 火力任务")
         fire_mission_frame.pack(fill="x", expand=True, pady=5)
 
         # --- Right Frame for Ammo ---
@@ -201,13 +201,13 @@ class MortarCalculatorApp(tk.Tk):
         # --- Faction Selection ---
         faction_frame = ttk.Frame(right_fm_frame)
         faction_frame.pack(anchor="w", pady=(0,10))
-        ttk.Label(faction_frame, text="Faction:").pack(side="left", anchor="w")
-        nato_radio = ttk.Radiobutton(faction_frame, text="NATO", variable=self.state.faction_var, value="NATO", command=self.on_faction_change)
+        ttk.Label(faction_frame, text="阵营:").pack(side="left", anchor="w")
+        nato_radio = ttk.Radiobutton(faction_frame, text="北约", variable=self.state.faction_var, value="NATO", command=self.on_faction_change)
         nato_radio.pack(side="left", padx=5)
-        ru_radio = ttk.Radiobutton(faction_frame, text="RU", variable=self.state.faction_var, value="RU", command=self.on_faction_change)
+        ru_radio = ttk.Radiobutton(faction_frame, text="俄军", variable=self.state.faction_var, value="RU", command=self.on_faction_change)
         ru_radio.pack(side="left")
 
-        ttk.Label(right_fm_frame, text="Ammunition:").pack(anchor="w")
+        ttk.Label(right_fm_frame, text="弹药类型:").pack(anchor="w")
         self.ammo_type_combo = ttk.Combobox(right_fm_frame, textvariable=self.state.ammo_type_var, state="readonly")
         self.ammo_type_combo.pack(anchor="w")
         self.ammo_type_combo.bind("<<ComboboxSelected>>", self.update_charge_options)
@@ -219,77 +219,77 @@ class MortarCalculatorApp(tk.Tk):
         # --- Targeting Mode ---
         targeting_mode_frame = ttk.Frame(center_fm_frame)
         targeting_mode_frame.grid(row=0, column=2, sticky="ns", pady=2, padx=20)
-        ttk.Label(targeting_mode_frame, text="Targeting Mode:").pack(anchor="w")
-        ttk.Radiobutton(targeting_mode_frame, text="Polar (FO)", variable=self.state.targeting_mode_var, value="Polar", command=self.on_targeting_mode_change).pack(anchor="w")
-        ttk.Radiobutton(targeting_mode_frame, text="Grid (TRP)", variable=self.state.targeting_mode_var, value="Grid", command=self.on_targeting_mode_change).pack(anchor="w")
+        ttk.Label(targeting_mode_frame, text="瞄准模式:").pack(anchor="w")
+        ttk.Radiobutton(targeting_mode_frame, text="极坐标 (前观)", variable=self.state.targeting_mode_var, value="Polar", command=self.on_targeting_mode_change).pack(anchor="w")
+        ttk.Radiobutton(targeting_mode_frame, text="网格 (目标参考点)", variable=self.state.targeting_mode_var, value="Grid", command=self.on_targeting_mode_change).pack(anchor="w")
         
-        ttk.Label(center_fm_frame, text="Mission Type:").grid(row=0, column=0, sticky="ns", pady=2, rowspan=2)
+        ttk.Label(center_fm_frame, text="任务类型:").grid(row=0, column=0, sticky="ns", pady=2, rowspan=2)
         
         mission_type_grid = ttk.Frame(center_fm_frame)
         mission_type_grid.grid(row=0, column=1, sticky="w", padx=5, rowspan=2)
 
-        mission_types = ["Regular", "Small Barrage", "Large Barrage", "Creeping Barrage"]
-        ttk.Radiobutton(mission_type_grid, text=mission_types[0], variable=self.state.fire_mission_type_var, value=mission_types[0], command=self.on_mission_type_change).grid(row=0, column=0, sticky="w")
-        ttk.Radiobutton(mission_type_grid, text=mission_types[3], variable=self.state.fire_mission_type_var, value=mission_types[3], command=self.on_mission_type_change).grid(row=1, column=0, sticky="w")
-        ttk.Radiobutton(mission_type_grid, text=mission_types[1], variable=self.state.fire_mission_type_var, value=mission_types[1], command=self.on_mission_type_change).grid(row=0, column=1, sticky="w")
-        ttk.Radiobutton(mission_type_grid, text=mission_types[2], variable=self.state.fire_mission_type_var, value=mission_types[2], command=self.on_mission_type_change).grid(row=1, column=1, sticky="w")
+        mission_types = ["常规", "小型弹幕", "大型弹幕", "渐进弹幕"]
+        ttk.Radiobutton(mission_type_grid, text=mission_types[0], variable=self.state.fire_mission_type_var, value="Regular", command=self.on_mission_type_change).grid(row=0, column=0, sticky="w")
+        ttk.Radiobutton(mission_type_grid, text=mission_types[3], variable=self.state.fire_mission_type_var, value="Creeping Barrage", command=self.on_mission_type_change).grid(row=1, column=0, sticky="w")
+        ttk.Radiobutton(mission_type_grid, text=mission_types[1], variable=self.state.fire_mission_type_var, value="Small Barrage", command=self.on_mission_type_change).grid(row=0, column=1, sticky="w")
+        ttk.Radiobutton(mission_type_grid, text=mission_types[2], variable=self.state.fire_mission_type_var, value="Large Barrage", command=self.on_mission_type_change).grid(row=1, column=1, sticky="w")
 
         # --- Targeting Data Frame (Container for FO and TRP) ---
-        targeting_data_frame = ttk.LabelFrame(input_frame, text="3. Targeting Data")
+        targeting_data_frame = ttk.LabelFrame(input_frame, text="3. 目标数据")
         targeting_data_frame.pack(fill="x", expand=True, pady=5)
 
-        self.fo_frame = ttk.LabelFrame(targeting_data_frame, text="Forward Observer (FO) Data")
+        self.fo_frame = ttk.LabelFrame(targeting_data_frame, text="前观员 (FO) 数据")
         # self.fo_frame is packed in on_targeting_mode_change
 
-        ttk.Label(self.fo_frame, text="FO 10-Digit Grid:").grid(row=0, column=0, padx=5, pady=2, sticky="w")
+        ttk.Label(self.fo_frame, text="FO 10位网格:").grid(row=0, column=0, padx=5, pady=2, sticky="w")
         ttk.Entry(self.fo_frame, textvariable=self.state.fo_grid_var, width=12).grid(row=0, column=1, padx=5, pady=2)
-        ttk.Label(self.fo_frame, text="FO Elevation (m):").grid(row=0, column=2, padx=5, pady=2, sticky="w")
+        ttk.Label(self.fo_frame, text="FO 海拔 (米):").grid(row=0, column=2, padx=5, pady=2, sticky="w")
         ttk.Entry(self.fo_frame, textvariable=self.state.fo_elev_var, width=7).grid(row=0, column=3, padx=5, pady=2)
-        ttk.Label(self.fo_frame, text="FO ID:").grid(row=0, column=4, padx=5, pady=2, sticky="w")
+        ttk.Label(self.fo_frame, text="FO 呼号:").grid(row=0, column=4, padx=5, pady=2, sticky="w")
         ttk.Entry(self.fo_frame, textvariable=self.state.fo_id_var, width=12).grid(row=0, column=5, padx=5, pady=2)
-        ttk.Label(self.fo_frame, text="Azimuth to Target (Degrees):").grid(row=1, column=0, padx=5, pady=2, sticky="w")
+        ttk.Label(self.fo_frame, text="目标方位角 (度):").grid(row=1, column=0, padx=5, pady=2, sticky="w")
         ttk.Entry(self.fo_frame, textvariable=self.state.fo_azimuth_var, width=7).grid(row=1, column=1, padx=5, pady=2)
-        ttk.Label(self.fo_frame, text="Distance to Target (m):").grid(row=1, column=2, padx=5, pady=2, sticky="w")
+        ttk.Label(self.fo_frame, text="目标距离 (米):").grid(row=1, column=2, padx=5, pady=2, sticky="w")
         ttk.Entry(self.fo_frame, textvariable=self.state.fo_dist_var, width=7).grid(row=1, column=3, padx=5, pady=2)
-        ttk.Label(self.fo_frame, text="Elev. Change to Target (m):").grid(row=2, column=0, padx=5, pady=2, sticky="w")
+        ttk.Label(self.fo_frame, text="目标海拔变化 (米):").grid(row=2, column=0, padx=5, pady=2, sticky="w")
         ttk.Entry(self.fo_frame, textvariable=self.state.fo_elev_diff_var, width=7).grid(row=2, column=1, padx=5, pady=2)
         
-        self.creep_direction_label = ttk.Label(self.fo_frame, text="Creep Direction (Degrees):")
+        self.creep_direction_label = ttk.Label(self.fo_frame, text="渐进方向 (度):")
         self.creep_direction_label.grid(row=2, column=2, padx=5, pady=2, sticky="w")
         self.creep_direction_entry = ttk.Entry(self.fo_frame, textvariable=self.state.creep_direction_var, width=7)
         self.creep_direction_entry.grid(row=2, column=3, padx=5, pady=2)
 
-        self.creep_spread_label = ttk.Label(self.fo_frame, text="Creep Spread (x):")
+        self.creep_spread_label = ttk.Label(self.fo_frame, text="渐进间距 (倍):")
         self.creep_spread_label.grid(row=3, column=0, padx=5, pady=2, sticky="w")
         self.creep_spread_slider = ttk.Scale(self.fo_frame, from_=0.5, to=2.0, orient="horizontal", variable=self.state.creep_spread_var)
         self.creep_spread_slider.grid(row=3, column=1, padx=5, pady=2, sticky="ew")
         self.creep_spread_value_label = ttk.Label(self.fo_frame, textvariable=self.state.creep_spread_var)
         self.creep_spread_value_label.grid(row=3, column=2, padx=5, pady=2, sticky="w")
 
-        self.trp_frame = ttk.LabelFrame(targeting_data_frame, text="Target Reference Point (TRP) Data")
+        self.trp_frame = ttk.LabelFrame(targeting_data_frame, text="目标参考点 (TRP) 数据")
         # self.trp_frame is packed in on_targeting_mode_change
-        ttk.Label(self.trp_frame, text="Target 10-Digit Grid:").grid(row=0, column=0, padx=5, pady=2, sticky="w")
+        ttk.Label(self.trp_frame, text="目标 10位网格:").grid(row=0, column=0, padx=5, pady=2, sticky="w")
         ttk.Entry(self.trp_frame, textvariable=self.state.trp_grid_var, width=12).grid(row=0, column=1, padx=5, pady=2)
-        ttk.Label(self.trp_frame, text="Target Elevation (m):").grid(row=0, column=2, padx=5, pady=2, sticky="w")
+        ttk.Label(self.trp_frame, text="目标海拔 (米):").grid(row=0, column=2, padx=5, pady=2, sticky="w")
         ttk.Entry(self.trp_frame, textvariable=self.state.trp_elev_var, width=7).grid(row=0, column=3, padx=5, pady=2)
         
-        self.load_trp_to_main_button = ttk.Button(self.trp_frame, text="Load TRP from TRP List", command=self.trp_view.load_valid_trp_to_main)
+        self.load_trp_to_main_button = ttk.Button(self.trp_frame, text="从TRP列表加载", command=self.trp_view.load_valid_trp_to_main)
         self.load_trp_to_main_button.grid(row=1, column=0, columnspan=4, pady=5)
 
-        corr_frame = ttk.LabelFrame(input_frame, text="4. Fire Mission Corrections (Optional)")
+        corr_frame = ttk.LabelFrame(input_frame, text="4. 火力任务修正 (可选)")
         corr_frame.pack(fill="x", expand=True, pady=5)
-        ttk.Label(corr_frame, text="Left(-)/Right(+) (m):").grid(row=0, column=0, padx=5, pady=2, sticky="w")
+        ttk.Label(corr_frame, text="左(-)/右(+) (米):").grid(row=0, column=0, padx=5, pady=2, sticky="w")
         ttk.Entry(corr_frame, textvariable=self.state.corr_lr_var, width=7).grid(row=0, column=1, padx=5, pady=2)
-        ttk.Label(corr_frame, text="Add(+)/Drop(-) (m):").grid(row=1, column=0, padx=5, pady=2, sticky="w")
+        ttk.Label(corr_frame, text="加(+)/减(-) (米):").grid(row=1, column=0, padx=5, pady=2, sticky="w")
         ttk.Entry(corr_frame, textvariable=self.state.corr_ad_var, width=7).grid(row=1, column=1, padx=5, pady=2)
-        ttk.Label(corr_frame, text="Charge Used for Spotting:").grid(row=2, column=0, padx=5, pady=2, sticky="w")
+        ttk.Label(corr_frame, text="校射用装药:").grid(row=2, column=0, padx=5, pady=2, sticky="w")
         self.spotting_charge_combo = ttk.Combobox(corr_frame, textvariable=self.state.spotting_charge_var, state="readonly", width=5)
         self.spotting_charge_combo.grid(row=2, column=1, padx=5, pady=2)
 
 
-        self.quick_fire_frame = ttk.LabelFrame(input_frame, text="Quick Fire Data")
+        self.quick_fire_frame = ttk.LabelFrame(input_frame, text="快速射击数据")
         
-        self.danger_close_label = ttk.Label(self.quick_fire_frame, text="DANGER CLOSE FIRE MISSION", style="DangerClose.TLabel")
+        self.danger_close_label = ttk.Label(self.quick_fire_frame, text="危险接近火力任务", style="DangerClose.TLabel")
         self.danger_close_label.grid(row=0, column=2, rowspan=3, padx=20)
         self.danger_close_label.grid_remove()
         
@@ -317,27 +317,27 @@ class MortarCalculatorApp(tk.Tk):
         action_frame = ttk.Frame(left_frame)
         action_frame.pack(pady=10, fill="x")
         action_frame.grid_columnconfigure(0, weight=1)
-        ttk.Button(action_frame, text="Calculate Firing Solution", command=self.calculate_all).grid(row=0, column=0)
+        ttk.Button(action_frame, text="计算射击方案", command=self.calculate_all).grid(row=0, column=0)
 
-        target_details_frame = ttk.LabelFrame(left_frame, text="Calculated Target Details")
+        target_details_frame = ttk.LabelFrame(left_frame, text="计算目标详情")
         target_details_frame.pack(fill="x", expand=True, pady=5)
-        ttk.Label(target_details_frame, text="Target 10-Digit Grid:").grid(row=0, column=0, sticky="w", padx=5)
+        ttk.Label(target_details_frame, text="目标 10位网格:").grid(row=0, column=0, sticky="w", padx=5)
         ttk.Label(target_details_frame, textvariable=self.state.target_grid_10_var, font="SegoeUI 10 bold").grid(row=0, column=1, sticky="w", padx=5)
-        ttk.Label(target_details_frame, text="Target Elevation:").grid(row=1, column=0, sticky="w", padx=5)
+        ttk.Label(target_details_frame, text="目标海拔:").grid(row=1, column=0, sticky="w", padx=5)
         ttk.Label(target_details_frame, textvariable=self.state.target_elev_var, font="SegoeUI 10 bold").grid(row=1, column=1, sticky="w", padx=5)
         azimuth_frame = ttk.Frame(target_details_frame, style="Highlight.TFrame")
         azimuth_frame.grid(row=2, column=0, columnspan=2, sticky="ew", padx=5, pady=2)
         inner_azimuth_frame = ttk.Frame(azimuth_frame, style="TFrame")
         inner_azimuth_frame.pack(fill="both", expand=True, padx=1, pady=1)
         inner_azimuth_frame.grid_columnconfigure(1, weight=1)
-        ttk.Label(inner_azimuth_frame, text="Mortar-Target Azimuth:", style="Highlight.TLabel").grid(row=0, column=0, sticky="w", padx=(5, 10))
+        ttk.Label(inner_azimuth_frame, text="迫击炮-目标方位角:", style="Highlight.TLabel").grid(row=0, column=0, sticky="w", padx=(5, 10))
         ttk.Label(inner_azimuth_frame, textvariable=self.state.mortar_to_target_azimuth_var, style="Highlight.Bold.TLabel").grid(row=0, column=1, sticky="w", padx=(0, 5))
-        ttk.Label(target_details_frame, text="Mortar-Target Distance:").grid(row=3, column=0, sticky="w", padx=5)
+        ttk.Label(target_details_frame, text="迫击炮-目标距离:").grid(row=3, column=0, sticky="w", padx=5)
         ttk.Label(target_details_frame, textvariable=self.state.mortar_to_target_dist_var, font="SegoeUI 10 bold").grid(row=3, column=1, sticky="w", padx=5)
-        ttk.Label(target_details_frame, text="Mortar-Target Elev. Change:").grid(row=4, column=0, sticky="w", padx=5)
+        ttk.Label(target_details_frame, text="迫击炮-目标海拔变化:").grid(row=4, column=0, sticky="w", padx=5)
         ttk.Label(target_details_frame, textvariable=self.state.mortar_to_target_elev_diff_var, font="SegoeUI 10 bold").grid(row=4, column=1, sticky="w", padx=5)
 
-        self.solution_frame = ttk.LabelFrame(left_frame, text="Final Firing Solution")
+        self.solution_frame = ttk.LabelFrame(left_frame, text="最终射击方案")
         self.solution_frame.pack(fill="both", expand=True, pady=5)
         
         self.map_view_widget = MapView(right_frame, self)
@@ -354,7 +354,7 @@ class MortarCalculatorApp(tk.Tk):
     def toggle_theme(self):
         self.is_dark_mode = not self.is_dark_mode
         if self.is_dark_mode:
-            self.settings_view.theme_button.config(text="Toggle Light Mode")
+            self.settings_view.theme_button.config(text="切换到浅色模式")
             bg_color, fg_color, frame_bg, entry_bg, button_bg, border_color = "#1E1E1E", "#00FF00", "#252526", "#3C3C3C", "#3C3C3C", "#3C3C3C"
             self.style.theme_use('default')
             self.update_idletasks() # Ensure theme is fully applied before custom styles
@@ -397,7 +397,7 @@ class MortarCalculatorApp(tk.Tk):
             if hasattr(self, 'trp_view'):
                 self.trp_view.apply_theme()
         else:
-            self.settings_view.theme_button.config(text="Toggle Dark Mode")
+            self.settings_view.theme_button.config(text="切换到深色模式")
             self.style.theme_use('vista')
             self.update_idletasks() # Ensure theme is fully applied before custom styles
             self.configure(background="SystemButtonFace")
@@ -444,19 +444,19 @@ class MortarCalculatorApp(tk.Tk):
             col_base = (i % 2) * 5
 
             # Create and place widgets
-            ttk.Label(self.mortar_inputs_container, text=f"Gun {i+1} Grid:").grid(row=row_base, column=col_base, padx=5, pady=2, sticky="w")
+            ttk.Label(self.mortar_inputs_container, text=f"炮 {i+1} 网格:").grid(row=row_base, column=col_base, padx=5, pady=2, sticky="w")
             grid_entry = ttk.Entry(self.mortar_inputs_container, textvariable=mortar_vars['grid'], width=12)
             grid_entry.grid(row=row_base, column=col_base + 1, padx=5, pady=2)
             
-            ttk.Label(self.mortar_inputs_container, text="Elev:").grid(row=row_base, column=col_base + 2, padx=5, pady=2, sticky="w")
+            ttk.Label(self.mortar_inputs_container, text="海拔:").grid(row=row_base, column=col_base + 2, padx=5, pady=2, sticky="w")
             elev_entry = ttk.Entry(self.mortar_inputs_container, textvariable=mortar_vars['elev'], width=7)
             elev_entry.grid(row=row_base, column=col_base + 3, padx=5, pady=2)
 
-            ttk.Label(self.mortar_inputs_container, text="Callsign:").grid(row=row_base + 1, column=col_base, padx=5, pady=2, sticky="w")
+            ttk.Label(self.mortar_inputs_container, text="呼号:").grid(row=row_base + 1, column=col_base, padx=5, pady=2, sticky="w")
             callsign_entry = ttk.Entry(self.mortar_inputs_container, textvariable=mortar_vars['callsign'], width=12)
             callsign_entry.grid(row=row_base + 1, column=col_base + 1, padx=5, pady=2)
 
-            lock_check = ttk.Checkbutton(self.mortar_inputs_container, text="Lock", variable=mortar_vars['locked'], command=lambda i=i: self.toggle_mortar_lock(i))
+            lock_check = ttk.Checkbutton(self.mortar_inputs_container, text="锁定", variable=mortar_vars['locked'], command=lambda i=i: self.toggle_mortar_lock(i))
             lock_check.grid(row=row_base + 1, column=col_base + 2, padx=5, pady=2)
 
             self.mortar_input_widgets.append({"grid": grid_entry, "elev": elev_entry, "callsign": callsign_entry})
@@ -546,7 +546,7 @@ class MortarCalculatorApp(tk.Tk):
         If trp_data is provided, it's a single TRP from a list calculation."""
         try:
             if trp_data is None: # Regular single calculation from Main tab
-                self.state.correction_status_var.set("Calculating...")
+                self.state.correction_status_var.set("计算中...")
                 if hasattr(self, 'flash_dc_job'):
                     self.after_cancel(self.flash_dc_job)
                     self.danger_close_label.grid_remove()
@@ -610,7 +610,7 @@ class MortarCalculatorApp(tk.Tk):
         ]
 
         if not trps_to_calculate:
-            messagebox.showinfo("No TRPs", "No TRPs added to calculate.")
+            messagebox.showinfo("无TRP", "没有添加TRP进行计算。")
             return
 
         # Clear the mission log in memory without saving to disk
@@ -730,11 +730,11 @@ class MortarCalculatorApp(tk.Tk):
             # No else block here, as invalid TRPs are only shown in the TRP tab's status column
 
         if valid_solutions_count > 0:
-            messagebox.showinfo("TRP Calculation Results",
-                                f"Calculated {valid_solutions_count} valid TRPs. "
-                                f"Valid results logged to mission log.")
+            messagebox.showinfo("TRP计算结果",
+                                f"计算了 {valid_solutions_count} 个有效TRP。 "
+                                f"有效结果已记录到任务日志。")
         else:
-            messagebox.showinfo("TRP Calculation Results", "No valid TRPs were calculated.")
+            messagebox.showinfo("TRP计算结果", "没有计算出有效的TRP。")
 
         # Update map only once at the end with all valid TRPs
         # Collect all valid TRP coordinates for plotting
@@ -759,9 +759,9 @@ class MortarCalculatorApp(tk.Tk):
         self.map_view_widget.plot_positions()
 
     def confirm_danger_close(self):
-        self.status_label.config(text="DANGER CLOSE ARE YOU SURE?", foreground="red")
+        self.status_label.config(text="危险接近，确定继续？", foreground="red")
         self.flash_danger_warning()
-        dialog = CustomDialog(self, "DANGER CLOSE", "The target is dangerously close to the FO.\nAre you sure you want to proceed?", self.is_dark_mode)
+        dialog = CustomDialog(self, "危险接近", "目标距离前观员过近。\n确定要继续吗？", self.is_dark_mode)
 
         if hasattr(self, 'flash_job'):
             self.after_cancel(self.flash_job)
@@ -825,7 +825,7 @@ class MortarCalculatorApp(tk.Tk):
     def _update_target_details(self, solution):
         """Updates the main target detail labels."""
         if not isinstance(solution, dict):
-            print(f"Debug: _update_target_details received non-dict solution: {solution}")
+            print(f"调试: _update_target_details 接收到非字典解决方案: {solution}")
             self.state.target_grid_10_var.set("----- -----")
             self.state.target_elev_var.set("-- m")
             self.state.mortar_to_target_azimuth_var.set("-- MIL")
@@ -855,8 +855,8 @@ class MortarCalculatorApp(tk.Tk):
         """Populates a single tab in the solution notebook with firing data,
         displaying error if no solution found for this mortar."""
         if not isinstance(sol, dict):
-            print(f"Debug: _populate_solution_tab received non-dict solution: {sol}")
-            ttk.Label(tab_frame, text="Error: Invalid Solution Data", foreground="red").pack(pady=10)
+            print(f"调试: _populate_solution_tab 接收到非字典解决方案: {sol}")
+            ttk.Label(tab_frame, text="错误: 无效的解决方案数据", foreground="red").pack(pady=10)
             return
         
         # Create unique styles for the labels within this tab
@@ -867,13 +867,13 @@ class MortarCalculatorApp(tk.Tk):
         self.style.configure(bold_label_style, background=tab_color, foreground="white", font=("Consolas", 10, "bold"))
 
         if sol.get('error'):
-            ttk.Label(tab_frame, text=f"Error: {sol['error']}", foreground="red", wraplength=250).pack(pady=10)
+            ttk.Label(tab_frame, text=f"错误: {sol['error']}", foreground="red", wraplength=250).pack(pady=10)
             return
  
-        ttk.Label(tab_frame, text="Least Time of Flight", style=bold_label_style).grid(row=0, column=1, padx=5)
-        ttk.Label(tab_frame, text="Most Time of Flight", style=bold_label_style).grid(row=0, column=2, padx=5)
+        ttk.Label(tab_frame, text="最短飞行时间", style=bold_label_style).grid(row=0, column=1, padx=5)
+        ttk.Label(tab_frame, text="最长飞行时间", style=bold_label_style).grid(row=0, column=2, padx=5)
         
-        ttk.Label(tab_frame, text="Charge (Rings):", style=label_style).grid(row=1, column=0, sticky="w", padx=5)
+        ttk.Label(tab_frame, text="装药 (环):", style=label_style).grid(row=1, column=0, sticky="w", padx=5)
         ttk.Label(tab_frame, text=f"{sol.get('least_tof', {}).get('charge', '--')}", style=bold_label_style).grid(row=1, column=1, padx=5)
         ttk.Label(tab_frame, text=f"{sol.get('most_tof', {}).get('charge', '--')}", style=bold_label_style).grid(row=1, column=2, padx=5)
  
@@ -884,15 +884,15 @@ class MortarCalculatorApp(tk.Tk):
         inner_elevation_frame.pack(fill="both", expand=True, padx=1, pady=1)
         inner_elevation_frame.grid_columnconfigure(1, weight=1)
         inner_elevation_frame.grid_columnconfigure(2, weight=1)
-        ttk.Label(inner_elevation_frame, text="Corrected Elevation:", style="Highlight.TLabel").grid(row=0, column=0, sticky="w", padx=5, pady=2)
+        ttk.Label(inner_elevation_frame, text="修正仰角:", style="Highlight.TLabel").grid(row=0, column=0, sticky="w", padx=5, pady=2)
         ttk.Label(inner_elevation_frame, text=f"{sol.get('least_tof', {}).get('elev', 0.0):.0f} MIL", style="Highlight.BigBold.TLabel").grid(row=0, column=1)
         ttk.Label(inner_elevation_frame, text=f"{sol.get('most_tof', {}).get('elev', 0.0):.0f} MIL", style="Highlight.BigBold.TLabel").grid(row=0, column=2)
  
-        ttk.Label(tab_frame, text="Time of Flight:", style=label_style).grid(row=3, column=0, sticky="w", padx=5)
+        ttk.Label(tab_frame, text="飞行时间:", style=label_style).grid(row=3, column=0, sticky="w", padx=5)
         ttk.Label(tab_frame, text=f"{sol.get('least_tof', {}).get('tof', 0.0):.1f} sec", style=bold_label_style).grid(row=3, column=1, padx=5)
         ttk.Label(tab_frame, text=f"{sol.get('most_tof', {}).get('tof', 0.0):.1f} sec", style=bold_label_style).grid(row=3, column=2, padx=5)
  
-        ttk.Label(tab_frame, text="Dispersion Radius:", style=label_style).grid(row=4, column=0, sticky="w", padx=5)
+        ttk.Label(tab_frame, text="散布半径:", style=label_style).grid(row=4, column=0, sticky="w", padx=5)
         ttk.Label(tab_frame, text=f"{sol.get('least_tof', {}).get('dispersion', 0.0)} m", style=bold_label_style).grid(row=4, column=1, padx=5)
         ttk.Label(tab_frame, text=f"{sol.get('most_tof', {}).get('dispersion', 0.0)} m", style=bold_label_style).grid(row=4, column=2, padx=5)
 
@@ -900,25 +900,25 @@ class MortarCalculatorApp(tk.Tk):
         """Populates the quick fire data frame for a single gun,
         displaying error if no solution found for this mortar."""
         if not isinstance(sol, dict):
-            print(f"Debug: _populate_quick_fire_data received non-dict solution: {sol}")
+            print(f"调试: _populate_quick_fire_data 接收到非字典解决方案: {sol}")
             return
 
-        gun_frame = ttk.LabelFrame(self.quick_fire_frame, text=f"Gun {gun_index + 1}")
+        gun_frame = ttk.LabelFrame(self.quick_fire_frame, text=f"炮 {gun_index + 1}")
         gun_frame.grid(row=0, column=gun_index, padx=5, pady=2, sticky="ns")
         
         if sol.get('error'):
-            ttk.Label(gun_frame, text=f"Error: {sol['error']}", foreground="red", wraplength=100).pack(pady=5)
+            ttk.Label(gun_frame, text=f"错误: {sol['error']}", foreground="red", wraplength=100).pack(pady=5)
             # Clear quick fire variables for this gun if there's an error
             self.state.quick_azimuth_var.set("---- MIL")
             self.state.quick_least_tof_elev_var.set("C-: ---- MIL")
             self.state.quick_most_tof_elev_var.set("C-: ---- MIL")
             return
 
-        ttk.Label(gun_frame, text="Azimuth:").pack(anchor="w")
+        ttk.Label(gun_frame, text="方位角:").pack(anchor="w")
         ttk.Label(gun_frame, text=f"{sol.get('azimuth', 0.0):.0f} MIL", style="QuickFire.TLabel").pack(anchor="w")
-        ttk.Label(gun_frame, text="Least ToF Elev:").pack(anchor="w")
+        ttk.Label(gun_frame, text="最短飞行时间仰角:").pack(anchor="w")
         ttk.Label(gun_frame, text=f"C-{sol.get('least_tof', {}).get('charge', '--')}: {sol.get('least_tof', {}).get('elev', 0.0):.0f} MIL", style="QuickFire.TLabel").pack(anchor="w")
-        ttk.Label(gun_frame, text="Most ToF Elev:").pack(anchor="w")
+        ttk.Label(gun_frame, text="最长飞行时间仰角:").pack(anchor="w")
         ttk.Label(gun_frame, text=f"C-{sol.get('most_tof', {}).get('charge', '--')}: {sol.get('most_tof', {}).get('elev', 0.0):.0f} MIL", style="QuickFire.TLabel").pack(anchor="w")
 
     def _create_solution_tabs(self, mortar_results):
@@ -1089,7 +1089,7 @@ class MortarCalculatorApp(tk.Tk):
                 except ValueError as e:
                     # If 8-digit grid, ask user to convert
                     if "8 or 10 digits" in str(e) and len(grid) == 8:
-                        if messagebox.askyesno("Convert Grid?", f"The mortar grid '{grid}' is 8 digits. Would you like to convert it to 10 digits by appending '00' to Easting and Northing?"):
+                        if messagebox.askyesno("转换网格？", f"迫击炮网格 '{grid}' 是8位数字。是否要将其转换为10位数字，在东向和北向坐标后添加'00'？"):
                             easting = int(grid[:4]) * 10
                             northing = int(grid[4:]) * 10
                             coords = (easting, northing)
@@ -1130,7 +1130,7 @@ class MortarCalculatorApp(tk.Tk):
             self.creep_spread_value_label.grid_remove()
 
     def new_mission(self, confirm=True):
-        if confirm and not messagebox.askyesno("New Mission", "This will clear all current mission data. Are you sure?"):
+        if confirm and not messagebox.askyesno("新任务", "这将清除所有当前任务数据。确定吗？"):
             return
 
         self.state.reset_inputs()
@@ -1151,14 +1151,14 @@ class MortarCalculatorApp(tk.Tk):
         try:
             with open(filepath, 'w') as f:
                 json.dump(self.mission_log.get_log_data(), f, indent=4)
-            messagebox.showinfo("Success", "Mission log saved successfully.")
+            messagebox.showinfo("成功", "任务日志保存成功。")
         except Exception as e:
-            messagebox.showerror("Error", f"Failed to save mission log: {e}")
+            messagebox.showerror("错误", f"保存任务日志失败: {e}")
 
     def load_log_from_file(self):
         filepath = filedialog.askopenfilename(
             filetypes=[("JSON files", "*.json"), ("All files", "*.*")],
-            title="Load Mission Log"
+            title="加载任务日志"
         )
         if not filepath:
             return
@@ -1166,9 +1166,9 @@ class MortarCalculatorApp(tk.Tk):
             with open(filepath, 'r') as f:
                 log_data = json.load(f)
             self.mission_log.load_log_data(log_data)
-            messagebox.showinfo("Success", "Mission log loaded successfully.")
+            messagebox.showinfo("成功", "任务日志加载成功。")
         except Exception as e:
-            messagebox.showerror("Error", f"Failed to load mission log: {e}")
+            messagebox.showerror("错误", f"加载任务日志失败: {e}")
 
     def load_map_image_and_view(self):
         map_name = self.state.selected_map_var.get()
@@ -1189,10 +1189,10 @@ class MortarCalculatorApp(tk.Tk):
                 self.state.map_view = [0, 0, map_x_max, map_y_max]
             else:
                 self.state.map_image = None
-                messagebox.showerror("Map Error", f"Map file not found.\n\nPyInstaller check: The application expected to find the map at the following path, but it does not exist:\n\n{map_path}")
+                messagebox.showerror("地图错误", f"未找到地图文件。\n\nPyInstaller检查：应用程序期望在以下路径找到地图，但该路径不存在：\n\n{map_path}")
         except Exception as e:
             self.state.map_image = None
-            messagebox.showerror("Map Loading Error", f"An error occurred while loading the map image:\n\n{e}\n\nAttempted path:\n{map_path}")
+            messagebox.showerror("地图加载错误", f"加载地图图片时发生错误：\n\n{e}\n\n尝试的路径：\n{map_path}")
         
         self.map_view_widget.plot_positions()
 
@@ -1204,7 +1204,7 @@ class MortarCalculatorApp(tk.Tk):
     def load_trp_to_main_from_log(self):
         log_entries = self.mission_log.get_log_data()
         if not log_entries:
-            messagebox.showinfo("No Log Entries", "The mission log is empty. Please log a mission first.")
+            messagebox.showinfo("无日志条目", "任务日志为空。请先记录一个任务。")
             return
 
         # Create a list of display names for the dialog
@@ -1243,7 +1243,7 @@ class MortarCalculatorApp(tk.Tk):
                     # For now, let's assume they select a regular mission or a single TRP from the TRP tab.
                     # If they select a TRP_BATCH_RESULT, we can't directly load a single TRP from it here.
                     # This button is for loading a *single* target from the log.
-                    messagebox.showwarning("Selection Error", "Please select a regular mission entry, not a TRP batch result.")
+                    messagebox.showwarning("选择错误", "请选择常规任务条目，而不是TRP批量结果。")
                     return
                 
                 target_grid = selected_mission_data.get("calculated_target_grid")
@@ -1254,11 +1254,11 @@ class MortarCalculatorApp(tk.Tk):
                     self.state.trp_elev_var.set(target_elev)
                     self.state.targeting_mode_var.set("Grid")
                     self.on_targeting_mode_change()
-                    messagebox.showinfo("TRP Loaded", f"Target '{selected_mission_data.get('target_name', 'Unknown')}' loaded to Main tab.")
+                    messagebox.showinfo("TRP已加载", f"目标 '{selected_mission_data.get('target_name', '未知')}' 已加载到主界面。")
                 else:
-                    messagebox.showwarning("Load Error", "Selected mission entry does not contain valid target grid or elevation.")
+                    messagebox.showwarning("加载错误", "选中的任务条目不包含有效的目标网格或海拔。")
             else:
-                messagebox.showwarning("Selection Error", "Could not find selected mission data.")
+                messagebox.showwarning("选择错误", "无法找到选中的任务数据。")
 
 if __name__ == "__main__":
     app = MortarCalculatorApp()

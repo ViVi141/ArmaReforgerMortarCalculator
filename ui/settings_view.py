@@ -9,28 +9,28 @@ class SettingsView(ttk.Frame):
         self.pack(fill="both", expand=True)
 
         # Map Settings
-        map_settings_frame = ttk.LabelFrame(self, text="Map Settings")
+        map_settings_frame = ttk.LabelFrame(self, text="地图设置")
         map_settings_frame.pack(fill="x", expand=True, pady=5)
         
-        ttk.Label(map_settings_frame, text="Select Map:").grid(row=0, column=0, padx=5, pady=2, sticky="w")
+        ttk.Label(map_settings_frame, text="选择地图:").grid(row=0, column=0, padx=5, pady=2, sticky="w")
         self.map_selection_combo = ttk.Combobox(map_settings_frame, textvariable=self.app.state.selected_map_var, state="readonly")
         self.map_selection_combo.grid(row=0, column=1, padx=5, pady=2, sticky="ew")
         self.map_selection_combo.bind("<<ComboboxSelected>>", self.on_map_selected)
 
-        ttk.Label(map_settings_frame, text="Map X-Max (m):").grid(row=1, column=0, padx=5, pady=2, sticky="w")
+        ttk.Label(map_settings_frame, text="地图 X-最大值 (米):").grid(row=1, column=0, padx=5, pady=2, sticky="w")
         ttk.Entry(map_settings_frame, textvariable=self.app.state.map_x_max_var, width=10).grid(row=1, column=1, padx=5, pady=2)
         
-        ttk.Label(map_settings_frame, text="Map Y-Max (m):").grid(row=2, column=0, padx=5, pady=2, sticky="w")
+        ttk.Label(map_settings_frame, text="地图 Y-最大值 (米):").grid(row=2, column=0, padx=5, pady=2, sticky="w")
         ttk.Entry(map_settings_frame, textvariable=self.app.state.map_y_max_var, width=10).grid(row=2, column=1, padx=5, pady=2)
 
-        ttk.Button(map_settings_frame, text="Upload New Map", command=self.upload_map).grid(row=3, column=0, columnspan=2, pady=10)
+        ttk.Button(map_settings_frame, text="上传新地图", command=self.upload_map).grid(row=3, column=0, columnspan=2, pady=10)
         map_settings_frame.grid_columnconfigure(1, weight=1)
 
         # Theme
-        theme_frame = ttk.LabelFrame(self, text="Theme")
+        theme_frame = ttk.LabelFrame(self, text="主题")
         theme_frame.pack(fill="x", expand=True, pady=5)
         
-        self.theme_button = ttk.Button(theme_frame, text="Toggle Dark Mode", command=self.app.toggle_theme)
+        self.theme_button = ttk.Button(theme_frame, text="切换深色模式", command=self.app.toggle_theme)
         self.theme_button.pack(pady=5)
 
         # custom_theme_frame = ttk.LabelFrame(theme_frame, text="Customization")
@@ -54,27 +54,27 @@ class SettingsView(ttk.Frame):
         # ttk.Button(custom_theme_frame, text="Set Logo", command=self.set_logo).grid(row=3, column=1, pady=5)
 
         # Warnings
-        warnings_frame = ttk.LabelFrame(self, text="Warnings")
+        warnings_frame = ttk.LabelFrame(self, text="警告")
         warnings_frame.pack(fill="x", expand=True, pady=5)
-        ttk.Checkbutton(warnings_frame, text="Disable 'Danger Close' Warning", variable=self.app.state.disable_danger_close_var).pack(pady=5, padx=5, anchor="w")
+        ttk.Checkbutton(warnings_frame, text="禁用'危险接近'警告", variable=self.app.state.disable_danger_close_var).pack(pady=5, padx=5, anchor="w")
 
         # Admin
         # --- Admin Mode (Hidden Feature) ---
         # NOTE: The admin mode, advanced targeting system, and this hidden button are internal features.
         # They should NEVER be mentioned in the public RELEASE_NOTES.md or any user-facing documentation.
-        self.admin_frame = ttk.LabelFrame(self, text="Admin")
-        self.admin_status_label = ttk.Label(self.admin_frame, text="Admin Mode Enabled")
+        self.admin_frame = ttk.LabelFrame(self, text="管理员")
+        self.admin_status_label = ttk.Label(self.admin_frame, text="管理员模式已启用")
         self.admin_status_label.pack(pady=5)
 
         danger_close_frame = ttk.Frame(self.admin_frame)
         danger_close_frame.pack(pady=5)
         
-        ttk.Label(danger_close_frame, text="Danger Close (m):").pack(side="left", padx=5)
+        ttk.Label(danger_close_frame, text="危险接近距离 (米):").pack(side="left", padx=5)
         self.danger_close_entry = ttk.Entry(danger_close_frame, width=10)
         self.danger_close_entry.pack(side="left", padx=5)
         self.danger_close_entry.insert(0, self.app.config_manager.get_danger_close_distance())
         
-        ttk.Button(danger_close_frame, text="Set", command=self.set_danger_close).pack(side="left", padx=5)
+        ttk.Button(danger_close_frame, text="设置", command=self.set_danger_close).pack(side="left", padx=5)
 
         # Transparent 1x1 pixel GIF
         self.transparent_img = PhotoImage(data='R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7')
@@ -95,7 +95,7 @@ class SettingsView(ttk.Frame):
 
         # Ask for confirmation before changing the map and clearing data
         if self.app.state.fo_grid_var.get() != "0000000000": # Check if there's existing data
-            if not messagebox.askyesno("Change Map?", "Changing the map will clear all current mission data. Are you sure?"):
+            if not messagebox.askyesno("更改地图？", "更改地图将清除所有当前任务数据。确定吗？"):
                 # User clicked 'No', so we need to revert the combobox selection
                 # This is a bit tricky as we don't have the 'previous' value directly.
                 # A simple approach is to just return, leaving the selection as is,
@@ -112,7 +112,7 @@ class SettingsView(ttk.Frame):
         self.app.load_map_image_and_view()
 
     def upload_map(self):
-        file_path = filedialog.askopenfilename(filetypes=[("Image Files", "*.png;*.jpg;*.jpeg")])
+        file_path = filedialog.askopenfilename(filetypes=[("图片文件", "*.png;*.jpg;*.jpeg")])
         if not file_path:
             return
 
@@ -144,7 +144,7 @@ class SettingsView(ttk.Frame):
             distance = int(self.danger_close_entry.get())
             self.app.config_manager.set_danger_close_distance(distance)
         except ValueError:
-            messagebox.showerror("Error", "Invalid distance. Please enter a number.")
+            messagebox.showerror("错误", "无效距离。请输入数字。")
 
     def refresh_map_list(self):
         map_files = self.app.config_manager.get_map_list()

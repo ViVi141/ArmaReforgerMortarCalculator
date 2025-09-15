@@ -20,7 +20,7 @@ def parse_grid(grid_str):
         easting = int(grid_str[:half])
         northing = int(grid_str[half:])
     else:
-        raise ValueError(f"Grid must be 8 or 10 digits, but got {len(grid_str)} digits.")
+        raise ValueError(f"网格必须是8位或10位数字，但得到了{len(grid_str)}位数字。")
         
     return easting, northing
 

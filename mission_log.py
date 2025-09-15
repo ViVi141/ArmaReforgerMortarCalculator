@@ -21,17 +21,17 @@ class MissionLog:
         action_frame = ttk.Frame(log_frame)
         action_frame.pack(pady=5, fill="x")
 
-        ttk.Label(action_frame, text="Target Name:").pack(side="left", padx=(0, 5))
-        self.target_name_var = tk.StringVar(value="Target")
+        ttk.Label(action_frame, text="目标名称:").pack(side="left", padx=(0, 5))
+        self.target_name_var = tk.StringVar(value="目标")
         ttk.Entry(action_frame, textvariable=self.target_name_var).pack(side="left", padx=5)
 
-        ttk.Button(action_frame, text="Log Current Mission", command=self.log_mission).pack(side="left", padx=5)
-        ttk.Button(action_frame, text="Load Selected Mission", command=self.load_selected_mission).pack(side="left", padx=5)
-        ttk.Button(action_frame, text="Delete Selected Mission", command=self.delete_selected_mission).pack(side="left", padx=5)
+        ttk.Button(action_frame, text="记录当前任务", command=self.log_mission).pack(side="left", padx=5)
+        ttk.Button(action_frame, text="加载选中任务", command=self.load_selected_mission).pack(side="left", padx=5)
+        ttk.Button(action_frame, text="删除选中任务", command=self.delete_selected_mission).pack(side="left", padx=5)
         
         # Add Save and Load buttons to the right
-        ttk.Button(action_frame, text="Save Log As...", command=self.app.save_log_as).pack(side="right", padx=5)
-        ttk.Button(action_frame, text="Load Log File", command=self.app.load_log_from_file).pack(side="right", padx=5)
+        ttk.Button(action_frame, text="另存为...", command=self.app.save_log_as).pack(side="right", padx=5)
+        ttk.Button(action_frame, text="加载日志文件", command=self.app.load_log_from_file).pack(side="right", padx=5)
 
         # --- Log Display Frame ---
         tree_frame = ttk.Frame(log_frame)
@@ -40,13 +40,13 @@ class MissionLog:
         columns = ("name", "target_grid", "ammo", "azimuth", "dist", "mortar_callsign", "fo_id")
         self.log_tree = ttk.Treeview(tree_frame, columns=columns, show="headings")
 
-        self.log_tree.heading("name", text="Target Name")
-        self.log_tree.heading("target_grid", text="Target Grid")
-        self.log_tree.heading("ammo", text="Ammo")
-        self.log_tree.heading("azimuth", text="Azimuth (MIL)")
-        self.log_tree.heading("dist", text="Distance (m)")
-        self.log_tree.heading("mortar_callsign", text="Mortar Callsign")
-        self.log_tree.heading("fo_id", text="FO ID")
+        self.log_tree.heading("name", text="目标名称")
+        self.log_tree.heading("target_grid", text="目标网格")
+        self.log_tree.heading("ammo", text="弹药")
+        self.log_tree.heading("azimuth", text="方位角 (密位)")
+        self.log_tree.heading("dist", text="距离 (米)")
+        self.log_tree.heading("mortar_callsign", text="迫击炮呼号")
+        self.log_tree.heading("fo_id", text="前观ID")
 
         self.log_tree.column("name", width=120)
         self.log_tree.column("target_grid", width=100)

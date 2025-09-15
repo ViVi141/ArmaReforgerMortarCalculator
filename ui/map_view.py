@@ -25,7 +25,7 @@ class MapView(ttk.Frame):
         ttk.Button(zoom_button_frame, text="-", width=2, command=self.zoom_out).pack()
 
         self.show_saved_target_var = tk.BooleanVar(value=False)
-        show_saved_target_check = ttk.Checkbutton(self, text="Show Logged Targets", variable=self.show_saved_target_var, command=self.plot_positions)
+        show_saved_target_check = ttk.Checkbutton(self, text="显示已记录目标", variable=self.show_saved_target_var, command=self.plot_positions)
         show_saved_target_check.place(relx=0.02, rely=0.02, anchor="nw")
 
     def plot_positions(self):
@@ -105,7 +105,7 @@ class MapView(ttk.Frame):
                 self.logo_photo = ImageTk.PhotoImage(logo_image)
                 self.graph_canvas.create_image(0, 0, anchor="nw", image=self.logo_photo)
             except Exception as e:
-                print(f"Error loading logo image: {e}")
+                print(f"加载徽标图片错误: {e}")
 
     def _plot_solution_pins(self, transform, mortar_colors, fo_color, canvas_width, canvas_height):
         solutions = self.app.state.last_solutions
@@ -124,7 +124,7 @@ class MapView(ttk.Frame):
             mortar_e, mortar_n = mortar_coords
             mortar_x, mortar_y, _ = transform(mortar_e, mortar_n)
             self.graph_canvas.create_oval(mortar_x-5, mortar_y-5, mortar_x+5, mortar_y+5, fill=mortar_colors[i], outline="black")
-            self.graph_canvas.create_text(mortar_x, mortar_y - 15, text=f"Gun {i+1}", fill="black")
+            self.graph_canvas.create_text(mortar_x, mortar_y - 15, text=f"炮 {i+1}", fill="black")
 
         # Get FO coordinates from app state, not from individual solutions
         # Import parse_grid if not already imported
@@ -138,7 +138,7 @@ class MapView(ttk.Frame):
         # Only plot FO if not in Grid (TRP) targeting mode
         if self.app.state.targeting_mode_var.get() != "Grid" and not (self.app.state.admin_mode_enabled.get() and self.app.state.admin_target_pin):
             self.graph_canvas.create_oval(fo_x-5, fo_y-5, fo_x+5, fo_y+5, fill=fo_color, outline="black")
-            self.graph_canvas.create_text(fo_x, fo_y - 15, text="FO", fill="black")
+            self.graph_canvas.create_text(fo_x, fo_y - 15, text="前观", fill="black")
 
         mission_type = self.app.state.fire_mission_type_var.get()
         
@@ -168,7 +168,7 @@ class MapView(ttk.Frame):
         if scaled_min_disp > 0:
             self.graph_canvas.create_oval(target_x - scaled_min_disp, target_y - scaled_min_disp, target_x + scaled_min_disp, target_y + scaled_min_disp, outline="red", width=2)
  
-        target_label = self.app.state.loaded_target_name.get() or "Target"
+        target_label = self.app.state.loaded_target_name.get() or "目标"
         for i, sol in enumerate(valid_solutions): # Iterate only valid solutions for target pins
             self.graph_canvas.create_oval(target_x - 10, target_y - 10, target_x + 10, target_y + 10, outline=mortar_colors[i], width=2)
             self.graph_canvas.create_polygon(target_x, target_y-7, target_x-7, target_y+7, target_x+7, target_y+7, fill=mortar_colors[i], outline="black")
@@ -177,9 +177,9 @@ class MapView(ttk.Frame):
         legend_x = canvas_width - 150
         legend_y = canvas_height - 50
         self.graph_canvas.create_rectangle(legend_x, legend_y, legend_x + 20, legend_y + 20, fill="red", outline="black")
-        self.graph_canvas.create_text(legend_x + 30, legend_y + 10, text="Kill Area", anchor="w", fill="black")
+        self.graph_canvas.create_text(legend_x + 30, legend_y + 10, text="杀伤区域", anchor="w", fill="black")
         self.graph_canvas.create_rectangle(legend_x, legend_y + 25, legend_x + 20, legend_y + 45, fill="yellow", outline="black")
-        self.graph_canvas.create_text(legend_x + 30, legend_y + 35, text="Expected Injury Area", anchor="w", fill="black")
+        self.graph_canvas.create_text(legend_x + 30, legend_y + 35, text="预期伤害区域", anchor="w", fill="black")
 
     def _plot_barrage_mission(self, solutions, transform, mortar_colors):
         valid_solutions = [s for s in solutions if not s.get('error')]
@@ -192,7 +192,7 @@ class MapView(ttk.Frame):
         for i, sol_i in enumerate(valid_solutions):
             self.graph_canvas.create_oval(target_x - 10, target_y - 10, target_x + 10, target_y + 10, outline=mortar_colors[i], width=2)
             self.graph_canvas.create_polygon(target_x, target_y-7, target_x-7, target_y+7, target_x+7, target_y+7, fill=mortar_colors[i], outline="black")
-        self.graph_canvas.create_text(target_x, target_y + 15, text="Target", fill="black")
+        self.graph_canvas.create_text(target_x, target_y + 15, text="目标", fill="black")
         
         disp = sol['least_tof']['dispersion'] * scale
         self.graph_canvas.create_oval(target_x - disp, target_y - disp, target_x + disp, target_y + disp, outline="red", width=2)
@@ -211,7 +211,7 @@ class MapView(ttk.Frame):
             target_x, target_y, _ = transform(target_e, target_n)
             self.graph_canvas.create_oval(target_x - 10, target_y - 10, target_x + 10, target_y + 10, outline=mortar_colors[i], width=2)
             self.graph_canvas.create_polygon(target_x, target_y-7, target_x-7, target_y+7, target_x+7, target_y+7, fill=mortar_colors[i], outline="black")
-            self.graph_canvas.create_text(target_x, target_y + 15, text=f"Target {i+1}", fill="black")
+            self.graph_canvas.create_text(target_x, target_y + 15, text=f"目标 {i+1}", fill="black")
  
         creep_vec_e = last_target_e - first_target_e
         creep_vec_n = last_target_n - first_target_n
@@ -242,18 +242,18 @@ class MapView(ttk.Frame):
         target_e, target_n = self.app.state.admin_target_pin
         target_x, target_y, _ = transform(target_e, target_n)
         self.graph_canvas.create_polygon(target_x, target_y-7, target_x-7, target_y+7, target_x+7, target_y+7, fill=target_color, outline="black")
-        self.graph_canvas.create_text(target_x, target_y + 15, text="Target", fill="black")
+        self.graph_canvas.create_text(target_x, target_y + 15, text="目标", fill="black")
 
     def _draw_placeholder_pins(self, mortar_colors, fo_color, target_color, canvas_height):
         text_color = "black"
         placeholder_x = 50
         mortar_y, fo_y, target_y = canvas_height - 80, canvas_height - 50, canvas_height - 20
         self.graph_canvas.create_oval(placeholder_x - 5, mortar_y - 5, placeholder_x + 5, mortar_y + 5, fill=mortar_colors[0], outline="black")
-        self.graph_canvas.create_text(placeholder_x + 25, mortar_y, text="Mortar", fill=text_color, anchor="w")
+        self.graph_canvas.create_text(placeholder_x + 25, mortar_y, text="迫击炮", fill=text_color, anchor="w")
         self.graph_canvas.create_oval(placeholder_x - 5, fo_y - 5, placeholder_x + 5, fo_y + 5, fill=fo_color, outline="black")
-        self.graph_canvas.create_text(placeholder_x + 25, fo_y, text="FO", fill=text_color, anchor="w")
+        self.graph_canvas.create_text(placeholder_x + 25, fo_y, text="前观", fill=text_color, anchor="w")
         self.graph_canvas.create_polygon(placeholder_x, target_y - 7, placeholder_x - 7, target_y + 7, placeholder_x + 7, target_y + 7, fill=target_color, outline="black")
-        self.graph_canvas.create_text(placeholder_x + 25, target_y, text="Target", fill=text_color, anchor="w")
+        self.graph_canvas.create_text(placeholder_x + 25, target_y, text="目标", fill=text_color, anchor="w")
 
 
     def _plot_trp_targets(self, transform_func, target_color):
@@ -264,7 +264,7 @@ class MapView(ttk.Frame):
             # Draw a distinct marker for TRP targets (e.g., a small cross or square)
             self.graph_canvas.create_line(target_x - 5, target_y - 5, target_x + 5, target_y + 5, fill=target_color, width=2)
             self.graph_canvas.create_line(target_x - 5, target_y + 5, target_x + 5, target_y - 5, fill=target_color, width=2)
-            self.graph_canvas.create_text(target_x, target_y + 15, text="TRP", fill=target_color)
+            self.graph_canvas.create_text(target_x, target_y + 15, text="目标参考点", fill=target_color)
 
     def _plot_logged_targets(self, transform_func):
         """Plots all targets from the mission log on the map."""
@@ -284,7 +284,7 @@ class MapView(ttk.Frame):
                 )
                 self.graph_canvas.create_text(target_x, target_y + 18, text=target["name"], fill="black", font=("Consolas", 9, "bold"), tags="logged_target")
             except Exception as e:
-                print(f"Could not plot logged target {target.get('name', 'Unknown')}: {e}")
+                print(f"无法绘制已记录目标 {target.get('name', '未知')}: {e}")
 
     def zoom(self, event):
         if not self.app.state.map_image:
